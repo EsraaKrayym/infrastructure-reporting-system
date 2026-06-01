@@ -6,7 +6,8 @@ import dbPromise from "../config/db.js";
 export const createReport = async (req, res) => {
     try {
         const db = await dbPromise;
-        const { title, description, category, latitude, longitude, priority } = req.body;
+        const { title, description, category, latitude, longitude, priority, address } = req.body;
+        const photo = req.file ? req.file.filename : null;
 
         if (!title || !category) {
             return res.status(400).json({ message: "Title and category are required" });
@@ -14,7 +15,7 @@ export const createReport = async (req, res) => {
 
         await db.run(
             `INSERT INTO reports 
-            (title, description, category, latitude, longitude, user_id, status)
+            (title, description, category, latitude, longitude, user_id, status,priority, address, photo)
             VALUES (?, ?, ?, ?, ?, ?, ?)`,
             [
                 title,
@@ -24,11 +25,13 @@ export const createReport = async (req, res) => {
                 longitude,
                 req.user.id,
                 "Neu",
-                priority || "medium"
+                priority || "medium",
+                address || null,
+                photo
             ]
         );
 
-        res.status(201).json({ message: "Report created successfully" });
+        res.status(201).json({ message: "Report erfolgreich gespeichert" });
 
     } catch (error) {
         res.status(500).json({ message: error.message });

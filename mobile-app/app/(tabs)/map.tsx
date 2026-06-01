@@ -1,42 +1,184 @@
-import { View, StyleSheet, TouchableOpacity, Text } from "react-native";
+import {
+    View,
+    StyleSheet,
+    TouchableOpacity,
+    Text,
+    Pressable,
+    TextInput
+} from "react-native";
 import MapView, { Marker } from "react-native-maps";
-import { useEffect, useState, useContext } from "react";
+import * as Location from "expo-location";
+import { useEffect, useState, useContext, useRef } from "react";
 import { getReports } from "../../services/api";
 import { AuthContext } from "../../context/AuthContext";
 import { useRouter } from "expo-router";
+import { MaterialIcons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 
 export default function MapScreen() {
     const { token } = useContext(AuthContext);
     const [reports, setReports] = useState<any[]>([]);
+    const [userLocation, setUserLocation] = useState<any>(null);
+    const [showHint, setShowHint] = useState(false);
+    const [showModal, setShowModal] = useState(false);
+    const [search, setSearch] = useState("");
+    const mapRef = useRef<MapView>(null);
     const router = useRouter();
+    const [address, setAddress] = useState("");
+    const [description, setDescription] = useState("");
+    const [priority, setPriority] = useState("medium");
+    const [photo, setPhoto] = useState(null);
 
     useEffect(() => {
-        if (token) {
-            loadReports();
-        }
+        if (token) loadReports();
+        getUserLocation();
     }, [token]);
 
-    const loadReports = async () => {
-        try {
-            const data = await getReports(token);
+    const sendReport = async () => {
+        if (!userLocation) return;
 
-            if (Array.isArray(data)) {
-                setReports(data);
-            } else if (Array.isArray(data.reports)) {
-                setReports(data.reports || data);
-            } else {
-                setReports([]);
-            }
+        const formData = new FormData();
+
+        formData.append("description", description);
+        formData.append("priority", priority);
+        formData.append("address", address);
+        formData.append("latitude", userLocation.latitude.toString());
+        formData.append("longitude", userLocation.longitude.toString());
+
+        if (photo) {
+            formData.append("photo", {
+                uri: photo,
+                type: "image/jpeg",
+                name: "report.jpg",
+            } as any);
+        }
+
+        try {
+            const response = await fetch(
+                "http://192.168.178.30:5000/api/reports",
+                {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: formData,
+                }
+            );
+
+            const data = await response.json();
+
+            alert("Report erfolgreich gesendet");
+            setShowModal(false);
+            loadReports();
 
         } catch (error) {
-            console.log("Error loading reports:", error);
+            alert("Fehler beim Senden");
         }
     };
 
+    const openCamera = async () => {
+        const permission = await ImagePicker.requestCameraPermissionsAsync();
+        if (!permission.granted) return;
+
+        const result = await ImagePicker.launchCameraAsync({
+            quality: 0.5,
+        });
+
+        if (!result.canceled) {
+            setPhoto(result.assets[0].uri);
+        }
+    };
+    const getPriorityColor = (priority: string) => {
+        switch (priority) {
+            case "high":
+                return "#dc2626";
+            case "medium":
+                return "#f97316";
+            case "low":
+                return "#16a34a";
+            default:
+                return "#2563eb";
+        }
+    };
+
+    const loadReports = async () => {
+        const data = await getReports(token);
+        setReports(Array.isArray(data) ? data : data.reports || []);
+    };
+
+    const searchLocation = async () => {
+        if (!search) return;
+
+        const response = await fetch(
+            `https://nominatim.openstreetmap.org/search?format=json&q=${search}`
+        );
+
+        const data = await response.json();
+
+        if (data.length > 0) {
+            const lat = parseFloat(data[0].lat);
+            const lon = parseFloat(data[0].lon);
+
+            mapRef.current?.animateToRegion({
+                latitude: lat,
+                longitude: lon,
+                latitudeDelta: 0.05,
+                longitudeDelta: 0.05,
+            });
+        }
+    };
+
+    const getUserLocation = async () => {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted") return;
+
+        // 1️⃣ Standort holen
+        const location = await Location.getCurrentPositionAsync({});
+        setUserLocation(location.coords);
+
+        // 2️⃣ Reverse Geocoding (Adresse holen)
+        const result = await Location.reverseGeocodeAsync({
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude,
+        });
+
+        if (result.length > 0) {
+            const place = result[0];
+            setAddress(`${place.street || ""} ${place.name || ""}`);
+        }
+
+        // 3️⃣ Karte bewegen
+        mapRef.current?.animateToRegion({
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude,
+            latitudeDelta: 0.05,
+            longitudeDelta: 0.05,
+        });
+    };
+
+
     return (
         <View style={styles.container}>
+
+            {/* 🔎 Suchfeld MUSS außerhalb vom MapView */}
+            <View style={styles.searchContainer}>
+                <View style={styles.searchBox}>
+                    <MaterialIcons name="search" size={20} color="#555" />
+                    <TextInput
+                        placeholder="Ort suchen..."
+                        value={search}
+                        onChangeText={setSearch}
+                        style={styles.searchInput}
+                        onSubmitEditing={searchLocation}
+                    />
+                </View>
+            </View>
+
             <MapView
+                ref={mapRef}
                 style={styles.map}
+                showsUserLocation={true}
+                followsUserLocation={true}
                 initialRegion={{
                     latitude: 52.52,
                     longitude: 13.405,
@@ -44,6 +186,18 @@ export default function MapScreen() {
                     longitudeDelta: 0.05,
                 }}
             >
+
+                {userLocation && (
+                    <Marker
+                        coordinate={{
+                            latitude: userLocation.latitude,
+                            longitude: userLocation.longitude,
+                        }}
+                        pinColor="#2563eb"
+                        title="Dein Standort"
+                    />
+                )}
+
                 {reports.map((report) => (
                     <Marker
                         key={report.id}
@@ -51,31 +205,152 @@ export default function MapScreen() {
                             latitude: report.latitude,
                             longitude: report.longitude,
                         }}
-                        title={report.title}
-                        description={`Status: ${report.status}`}
+                        pinColor={getPriorityColor(report.priority)}
                     />
                 ))}
             </MapView>
 
-            {/* Floating Create Button */}
+            {/* ➕ Button */}
             <TouchableOpacity
                 style={styles.fab}
-                onPress={() => router.push("/create-report")}
+                onPress={() => {
+                    setShowHint(false);
+                    setShowModal(true);
+                }}
             >
                 <Text style={styles.fabText}>+</Text>
             </TouchableOpacity>
+
+
+            {/* 🔥 PROFESSIONELLES BOTTOM SHEET */}
+            {showModal && (
+                <Pressable
+                    style={styles.bottomSheetOverlay}
+                    onPress={() => setShowModal(false)}
+                >
+                    <Pressable
+                        style={styles.bottomSheet}
+                        onPress={(e) => e.stopPropagation()}
+                    >
+
+                        {/* 🔹 Header mit Schließen Icon */}
+                        <View style={styles.sheetHeader}>
+                            <TouchableOpacity onPress={() => setShowModal(false)}>
+                                <MaterialIcons name="close" size={26} color="#333" />
+                            </TouchableOpacity>
+
+                            <Text style={styles.sheetTitle}>Schaden melden</Text>
+
+                            <View style={{ width: 26 }} />
+                        </View>
+
+                        {/* 🔹 Priorität */}
+                        <Text style={styles.label}>Priorität</Text>
+                        <View style={styles.priorityRow}>
+                            {["low", "medium", "high"].map((p) => (
+                                <TouchableOpacity
+                                    key={p}
+                                    onPress={() => setPriority(p)}
+                                    style={[
+                                        styles.priorityBtn,
+                                        {
+                                            backgroundColor:
+                                                p === "high"
+                                                    ? "#dc2626"
+                                                    : p === "medium"
+                                                        ? "#f97316"
+                                                        : "#16a34a",
+                                            opacity: priority === p ? 1 : 0.4,
+                                        },
+                                    ]}
+                                >
+                                    <Text style={styles.priorityText}>
+                                        {p === "low"
+                                            ? "Niedrig"
+                                            : p === "medium"
+                                                ? "Mittel"
+                                                : "Hoch"}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+
+                        {/* 🔹 Adresse */}
+                        <Text style={styles.label}>Ort</Text>
+                        <TextInput
+                            value={address}
+                            onChangeText={setAddress}
+                            style={styles.input}
+                            placeholder="Adresse wird automatisch gesetzt"
+                        />
+
+                        {/* 🔹 Beschreibung */}
+                        <Text style={styles.label}>Beschreibung</Text>
+                        <TextInput
+                            value={description}
+                            onChangeText={setDescription}
+                            style={[styles.input, { height: 90 }]}
+                            multiline
+                            placeholder="Weitere Informationen..."
+                        />
+
+                        {/* 🔹 Kamera */}
+                        <TouchableOpacity
+                            style={styles.cameraBtn}
+                            onPress={openCamera}
+                        >
+                            <MaterialIcons name="camera-alt" size={20} color="white" />
+                            <Text style={{ color: "white", marginLeft: 8 }}>
+                                Foto aufnehmen
+                            </Text>
+                        </TouchableOpacity>
+
+                        {/* 🔹 Senden */}
+                        <TouchableOpacity style={styles.sendBtn} onPress={sendReport}>
+                            <Text style={styles.sendText}>
+                                Report senden
+                            </Text>
+                        </TouchableOpacity>
+
+                    </Pressable>
+                </Pressable>
+            )}
+
+
         </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-
     map: { flex: 1 },
+
+    searchContainer: {
+        position: "absolute",
+        top: 60,
+        left: 15,
+        right: 15,
+        zIndex: 20,
+    },
+
+    searchBox: {
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: "white",
+        paddingHorizontal: 15,
+        borderRadius: 15,
+        elevation: 6,
+    },
+
+    searchInput: {
+        flex: 1,
+        paddingVertical: 10,
+        marginLeft: 8,
+    },
 
     fab: {
         position: "absolute",
-        bottom: 30,
+        bottom: 40,
         right: 20,
         width: 65,
         height: 65,
@@ -83,15 +358,149 @@ const styles = StyleSheet.create({
         backgroundColor: "#2563eb",
         justifyContent: "center",
         alignItems: "center",
-        elevation: 6,
-        shadowColor: "#000",
-        shadowOpacity: 0.3,
-        shadowRadius: 6,
+        elevation: 8,
     },
 
     fabText: {
         color: "white",
         fontSize: 28,
         fontWeight: "bold",
+    },
+
+    hint: {
+        position: "absolute",
+        bottom: 120,
+        right: 20,
+        backgroundColor: "#2563eb",
+        padding: 10,
+        borderRadius: 10,
+        elevation: 6,
+    },
+
+    overlay: {
+        flex: 1,
+        backgroundColor: "rgba(0,0,0,0.5)",
+        justifyContent: "center",
+        alignItems: "center",
+    },
+
+    modalBox: {
+        width: 300,
+        backgroundColor: "white",
+        padding: 25,
+        borderRadius: 20,
+        elevation: 10,
+    },
+
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: "bold",
+        marginBottom: 20,
+    },
+
+    modalButton: {
+        backgroundColor: "#2563eb",
+        padding: 12,
+        borderRadius: 10,
+        alignItems: "center",
+    },
+    popupBox: {
+        width: 330,
+        backgroundColor: "#f8fafc",
+        padding: 20,
+        borderRadius: 25,
+        elevation: 10,
+    },
+
+    popupTitle: {
+        fontSize: 20,
+        fontWeight: "bold",
+        marginBottom: 15,
+        textAlign: "center",
+    },
+
+    label: {
+        marginTop: 10,
+        marginBottom: 5,
+        fontWeight: "600",
+    },
+
+    bottomSheetOverlay: {
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "rgba(0,0,0,0.4)",
+        justifyContent: "flex-end",
+    },
+
+    bottomSheet: {
+        backgroundColor: "#ffffff",
+        padding: 20,
+        borderTopLeftRadius: 25,
+        borderTopRightRadius: 25,
+        minHeight: 480,
+    },
+
+    sheetHeader: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: 15,
+    },
+
+    sheetTitle: {
+        fontSize: 20,
+        fontWeight: "bold",
+    },
+
+
+    priorityRow: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        marginBottom: 10,
+    },
+
+    priorityBtn: {
+        paddingVertical: 8,
+        paddingHorizontal: 15,
+        borderRadius: 15,
+    },
+
+    priorityText: {
+        color: "white",
+        fontWeight: "bold",
+    },
+
+    input: {
+        backgroundColor: "#f1f5f9",
+        padding: 12,
+        borderRadius: 15,
+        marginBottom: 5,
+    },
+
+    cameraBtn: {
+        flexDirection: "row",
+        backgroundColor: "#2563eb",
+        padding: 12,
+        borderRadius: 18,
+        alignItems: "center",
+        justifyContent: "center",
+        marginTop: 10,
+    },
+
+    sendBtn: {
+        marginTop: 15,
+        backgroundColor: "#1e40af",
+        padding: 15,
+        borderRadius: 20,
+        alignItems: "center",
+    },
+
+    sendText: {
+        color: "white",
+        fontWeight: "bold",
+        fontSize: 16,
     },
 });
