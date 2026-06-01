@@ -2,7 +2,9 @@ import dbPromise from "../config/db.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = "supersecretkey"; // später in .env auslagern
+
+
+
 
 export const register = async (req, res) => {
     try {
@@ -25,8 +27,8 @@ export const register = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         await db.run(
-            "INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)",
-            [name, email, hashedPassword, "citizen"]
+            "INSERT INTO users (name, email, password, role, blocked) VALUES (?, ?, ?, ?, ?)",
+            [name, email, hashedPassword, "citizen", 0]
         );
 
         res.status(201).json({ message: "User registered successfully" });
@@ -35,6 +37,7 @@ export const register = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
 
 export const login = async (req, res) => {
     try {
@@ -50,6 +53,11 @@ export const login = async (req, res) => {
             return res.status(401).json({ message: "Invalid credentials" });
         }
 
+        // 🔥 Block-Prüfung gehört hier rein
+        if (user.blocked === 1) {
+            return res.status(403).json({ message: "Account blocked" });
+        }
+
         const isMatch = await bcrypt.compare(password, user.password);
 
         if (!isMatch) {
@@ -58,7 +66,7 @@ export const login = async (req, res) => {
 
         const token = jwt.sign(
             { id: user.id, role: user.role },
-            JWT_SECRET,
+            process.env.JWT_SECRET,
             { expiresIn: "1d" }
         );
 

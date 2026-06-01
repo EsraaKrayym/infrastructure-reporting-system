@@ -1,15 +1,31 @@
 import express from "express";
 import {
     createReport,
-    getReports,
+    getReports, updatePriority,
     updateReportStatus
 } from "../controllers/reportController.js";
+
 import { verifyToken } from "../middleware/authMiddleware.js";
+import { requireRole } from "../middleware/roleMiddleware.js";
 
 const router = express.Router();
 
-router.post("/", verifyToken, createReport);
-router.get("/", verifyToken, getReports);
-router.put("/:id/status", verifyToken, updateReportStatus);
+// Citizen → Report erstellen
+router.post("/", verifyToken, requireRole(["citizen"]), createReport);
 
+// Citizen → eigene Reports sehen
+router.get("/my", verifyToken, requireRole(["citizen"]), getReports);
+
+// Caseworker → alle Reports sehen
+router.get("/", verifyToken, requireRole(["caseworker"]), getReports);
+
+// Caseworker → Status ändern
+router.put("/:id/status", verifyToken, requireRole(["caseworker"]), updateReportStatus);
+
+router.put(
+    "/:id/priority",
+    verifyToken,
+    requireRole(["caseworker"]),
+    updatePriority
+);
 export default router;

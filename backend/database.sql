@@ -5,6 +5,13 @@ CREATE TABLE IF NOT EXISTS users (
                                      password TEXT,
                                      role TEXT DEFAULT 'citizen'
 );
+CREATE TABLE IF NOT EXISTS audit_logs (
+                                          id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                          report_id INTEGER,
+                                          changed_by INTEGER,
+                                          action TEXT,
+                                          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 
 CREATE TABLE IF NOT EXISTS reports (
                                        id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -18,3 +25,10 @@ CREATE TABLE IF NOT EXISTS reports (
                                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                                        FOREIGN KEY (user_id) REFERENCES users(id)
     );
+CREATE TABLE audit_logs (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            report_id INTEGER,
+                            changed_by INTEGER,
+                            action TEXT,
+                            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
