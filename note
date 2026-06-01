@@ -1,0 +1,15 @@
+#Admin tocken
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NCwicm9sZSI6ImNhc2V3b3JrZXIiLCJpYXQiOjE3ODAzMjE...
+email = "admin@city.com"
+password = "123456"
+´´´´´´´´´´
+Invoke-RestMethod -Method GET `
+-Uri "http://192.168.178.30:5000/api/reports" `
+-Headers @{Authorization="Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NCwicm9sZSI6ImNhc2V3b3JrZXIiLCJpYXQiOjE3ODAzMjE..."}
+
+
+
+
+##### mobil app
+test@test.com
+123456

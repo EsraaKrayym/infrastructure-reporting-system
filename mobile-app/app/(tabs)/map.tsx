@@ -39,6 +39,8 @@ export default function MapScreen() {
 
         const formData = new FormData();
 
+        formData.append("title", "Meldung vom Mobilgerät");
+        formData.append("category", "road_damage");
         formData.append("description", description);
         formData.append("priority", priority);
         formData.append("address", address);
@@ -67,12 +69,16 @@ export default function MapScreen() {
 
             const data = await response.json();
 
+            if (!response.ok) {
+                throw new Error(data.message || "Fehler beim Senden des Reports");
+            }
+
             alert("Report erfolgreich gesendet");
             setShowModal(false);
-            loadReports();
+            await loadReports();
 
-        } catch (error) {
-            alert("Fehler beim Senden");
+        } catch (error: any) {
+            alert(error.message || "Fehler beim Senden");
         }
     };
 

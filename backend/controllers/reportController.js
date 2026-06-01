@@ -6,20 +6,40 @@ import dbPromise from "../config/db.js";
 export const createReport = async (req, res) => {
     try {
         const db = await dbPromise;
-        const { title, description, category, latitude, longitude, priority, address } = req.body;
+
+        const {
+            title,
+            description,
+            category,
+            latitude,
+            longitude,
+            priority,
+            address
+        } = req.body;
+
+        // Photo nur wenn es in der FormData kommt (für Admin-Web)
         const photo = req.file ? req.file.filename : null;
 
         if (!title || !category) {
-            return res.status(400).json({ message: "Title and category are required" });
+            return res.status(400).json({
+                message: "Title and category are required"
+            });
         }
 
-        await db.run(
-            `INSERT INTO reports 
-            (title, description, category, latitude, longitude, user_id, status,priority, address, photo)
-            VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        console.log("🔍 CREATE REPORT DEBUG:");
+        console.log("  Title:", title);
+        console.log("  User ID:", req.user.id);
+        console.log("  Role:", req.user.role);
+        console.log("  Latitude:", latitude);
+        console.log("  Longitude:", longitude);
+
+        const result = await db.run(
+            `INSERT INTO reports
+             (title, description, category, latitude, longitude, user_id, status, priority, address, photo)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 title,
-                description,
+                description || "Keine Beschreibung",
                 category,
                 latitude,
                 longitude,
@@ -31,9 +51,17 @@ export const createReport = async (req, res) => {
             ]
         );
 
-        res.status(201).json({ message: "Report erfolgreich gespeichert" });
+        console.log("✅ INSERT DONE - ID:", result.lastID);
+        
+        return res.status(201).json({
+            message: "Report erfolgreich gespeichert",
+            id: result.lastID
+        });
 
     } catch (error) {
+        console.error("❌ CREATE REPORT ERROR:", error);
+        console.error("REQUEST BODY:", req.body);
+        console.error("REQUEST USER:", req.user);
         res.status(500).json({ message: error.message });
     }
 };

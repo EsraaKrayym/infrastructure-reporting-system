@@ -9,11 +9,15 @@ export default function MyReports() {
 
     useEffect(() => {
         const load = async () => {
-            const data = await getReports(token);
-            setReports(data);
+            try {
+                const data = await getReports(token);
+                setReports(Array.isArray(data) ? data : data.reports || []);
+            } catch (err) {
+                console.error("Failed to load reports", err);
+            }
         };
-        load();
-    }, []);
+        if (token) load();
+    }, [token]);
 
     return (
         <View style={{ padding: 20 }}>

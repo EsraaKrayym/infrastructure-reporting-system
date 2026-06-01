@@ -11,8 +11,6 @@ import { upload } from "../middleware/upload.js";
 
 const router = express.Router();
 
-// Citizen → Report erstellen
-router.post("/", verifyToken, requireRole(["citizen"]), createReport);
 
 // Citizen → eigene Reports sehen
 router.get("/my", verifyToken, requireRole(["citizen"]), getReports);
