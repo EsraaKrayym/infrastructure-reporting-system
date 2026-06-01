@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import API from "../services/api";
 import "./Reports.css";
 
+const uploadBaseUrl = API.defaults.baseURL.replace(/\/api$/, "");
+
 export default function Reports() {
     const [reports, setReports] = useState([]);
     const [error, setError] = useState("");
@@ -48,9 +50,9 @@ export default function Reports() {
             case "high":
                 return "#dc2626";
             case "medium":
-                return "#f97316";
-            case "low":
                 return "#16a34a";
+            case "low":
+                return "#0f766e";
             default:
                 return "#2563eb";
         }
@@ -59,13 +61,32 @@ export default function Reports() {
     const translatePriority = (priority) => {
         switch (priority) {
             case "high":
-                return "Hoch";
+                return "Gefährlich";
             case "medium":
-                return "Mittel";
+                return "Mittelschwer";
             case "low":
-                return "Niedrig";
+                return "Leicht";
             default:
                 return priority;
+        }
+    };
+
+    const getStatusLabel = (status) => {
+        switch ((status || "").toLowerCase()) {
+            case "neu":
+            case "open":
+            case "pending":
+                return "Neu";
+            case "in_review":
+            case "in progress":
+            case "in_progress":
+                return "In Bearbeitung";
+            case "repaired":
+            case "done":
+            case "fixed":
+                return "Repariert";
+            default:
+                return status || "Unbekannt";
         }
     };
 
@@ -90,50 +111,68 @@ export default function Reports() {
             )}
 
             <div className="reports-grid">
-                {reports.map((report) => (
-                    <div key={report.id} className="report-card">
+                {reports.map((report) => {
+                    const createdAt = report.created_at || report.createdAt || report.createdAt;
+                    const createdDate = createdAt ? new Date(createdAt).toLocaleDateString("de-DE") : "Unbekannt";
+                    const mapUrl = `https://www.google.com/maps/search/?api=1&query=${report.latitude},${report.longitude}`;
+                    return (
+                        <div key={report.id} className="report-card">
+                            <div className="report-top">
+                                <span className="report-badge">#{report.id ?? "--"}</span>
+                                <span className="status-pill" style={{ background: getPriorityColor(report.priority) }}>
+                                    {translatePriority(report.priority)}
+                                </span>
+                            </div>
 
-                        <div className="report-header">
-                            <h3>{report.title}</h3>
-                            <span
-                                className="priority-badge"
-                                style={{ background: getPriorityColor(report.priority) }}
-                            >
-                                {translatePriority(report.priority)}
-                            </span>
-                        </div>
+                            <div className="report-title-row">
+                                <h3>{report.title || "Unbenannte Meldung"}</h3>
+                                <span className="status-label">{getStatusLabel(report.status)}</span>
+                            </div>
 
-                        {report.photo && (
-                            <img
-                                src={`http://localhost:5000/uploads/${report.photo}`}
-                                alt="report"
-                                className="report-image"
-                            />
-                        )}
+                            <div className="report-category">{report.category || "Allgemein"}</div>
 
-                        <p className="report-description">
-                            {report.description}
-                        </p>
+                            {report.photo ? (
+                                <img
+                                    src={`${uploadBaseUrl}/uploads/${report.photo}`}
+                                    alt="report"
+                                    className="report-image"
+                                />
+                            ) : (
+                                <div className="report-image placeholder">Kein Foto vorhanden</div>
+                            )}
 
-                        <div className="report-details">
-                            <div><strong>Adresse:</strong> {report.address || "Nicht angegeben"}</div>
-                            <div><strong>Status:</strong> {report.status}</div>
-                            <div><strong>Koordinaten:</strong> {report.latitude}, {report.longitude}</div>
-                            <div>
-                                <strong>Erstellt am:</strong>{" "}
-                                {new Date(report.created_at).toLocaleString()}
+                            <p className="report-description">
+                                {report.description || "Keine Beschreibung verfügbar."}
+                            </p>
+
+                            <div className="report-contact-card">
+                                <div>
+                                    <div className="contact-name">Reporter #{report.user_id || "unbekannt"}</div>
+                                    <div className="contact-subtitle">Admin User</div>
+                                </div>
+                                <div className="contact-phone">+49 170 0000000</div>
+                            </div>
+
+                            <div className="report-details report-details-grid">
+                                <div><strong>Lat:</strong> {report.latitude ?? "-"}</div>
+                                <div><strong>Lng:</strong> {report.longitude ?? "-"}</div>
+                                <a className="map-link" href={mapUrl} target="_blank" rel="noreferrer">Auf Google Maps ansehen</a>
+                            </div>
+
+                            <div className="report-actions report-actions-large">
+                                <button className="btn status">Status</button>
+                                <button className="btn edit">Bearbeiten</button>
+                                <button className="btn delete">Löschen</button>
+                                <button className="btn history">Verlauf</button>
+                                <button className="btn share">WhatsApp</button>
+                            </div>
+
+                            <div className="report-footer">
+                                <span>{createdDate}</span>
                             </div>
                         </div>
-
-                        <div className="report-actions">
-                            <button className="btn status">Status ändern</button>
-                            <button className="btn edit">Bearbeiten</button>
-                            <button className="btn delete">Löschen</button>
-                            <button className="btn history">Verlauf</button>
-                        </div>
-
-                    </div>
-                ))}
+                    );
+                })}
             </div>
         </div>
     );

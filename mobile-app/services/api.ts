@@ -1,4 +1,5 @@
 import axios from "axios";
+import { getPendingReports, removePendingReport, savePendingReport } from "./offline";
 
 const API_URL = "http://192.168.178.30:5000/api";
 
@@ -62,38 +63,78 @@ export const registerUser = async (name: string, email: string, password: string
 
 export const createReport = async (token: string, data: any) => {
     try {
-        // Stelle sicher, dass der Token gesetzt ist
         if (token && !authToken) {
             setAuthToken(token);
         }
 
-        console.log("🚀 Creating report:");
-        console.log("  Title:", data.title);
-        console.log("  Category:", data.category);
-        console.log("  Location:", data.latitude, data.longitude);
+        const isFormData = data instanceof FormData;
+        if (!isFormData) {
+            console.log("🚀 Creating report:");
+            console.log("  Title:", data.title);
+            console.log("  Category:", data.category);
+            console.log("  Location:", data.latitude, data.longitude);
+        } else {
+            console.log("🚀 Creating report with photo/FormData");
+        }
 
-        const payload = {
-            title: data.title,
-            description: data.description || "Keine Beschreibung",
-            category: data.category,
-            latitude: parseFloat(data.latitude),
-            longitude: parseFloat(data.longitude),
-            priority: data.priority || "medium",
-            address: data.address || "",
-        };
+        const body = isFormData
+            ? data
+            : {
+                  title: data.title,
+                  description: data.description || "Keine Beschreibung",
+                  category: data.category,
+                  latitude: parseFloat(data.latitude),
+                  longitude: parseFloat(data.longitude),
+                  priority: data.priority || "medium",
+                  address: data.address || "",
+              };
 
-        console.log("📦 Payload:", JSON.stringify(payload, null, 2));
-
-        const res = await api.post("/reports", payload, {
-            headers: { Authorization: `Bearer ${token}` }
+        const res = await api.post("/reports", body, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
         });
         return res.data;
     } catch (error: any) {
+        const isNetworkError = !error.response;
+        if (isNetworkError) {
+            if (data instanceof FormData) {
+                console.warn("⚠️ Offline-Upload mit Foto kann nicht gespeichert werden.");
+                throw new Error("Offline-Upload mit Foto ist aktuell nicht möglich. Bitte erneut senden, sobald die Verbindung wiederhergestellt ist.");
+            }
+
+            console.warn("⚠️ Offline oder Netzwerkfehler, Report wird lokal gespeichert.");
+            await savePendingReport({ ...data, priority: data.priority || "medium", address: data.address || "" });
+            return {
+                offline: true,
+                message: "Report offline gespeichert. Er wird gesendet, sobald die Verbindung wiederhergestellt ist.",
+            };
+        }
+
         console.error("❌ CREATE REPORT ERROR:");
         console.error("  Status:", error.response?.status);
         console.error("  Message:", error.response?.data?.message);
         console.error("  Error:", error.message);
         throw error;
+    }
+};
+
+export const syncPendingReports = async (token: string) => {
+    if (!token) return;
+
+    const pendingReports = await getPendingReports();
+    if (pendingReports.length === 0) return;
+
+    for (const pending of pendingReports) {
+        try {
+            await api.post("/reports", pending.data, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            await removePendingReport(pending.id);
+            console.log(`✅ Offline-Report synchronisiert: ${pending.id}`);
+        } catch (error: any) {
+            console.warn(`⚠️ Offline-Report konnte nicht synchronisiert werden: ${pending.id}`, error.message);
+        }
     }
 };
 

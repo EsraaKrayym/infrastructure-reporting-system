@@ -6,10 +6,10 @@ import {
     Pressable,
     TextInput
 } from "react-native";
-import MapView, { Marker } from "react-native-maps";
+import MapView, { Marker, Callout } from "react-native-maps";
 import * as Location from "expo-location";
 import { useEffect, useState, useContext, useRef } from "react";
-import { getReports } from "../../services/api";
+import { createReport, getReports } from "../../services/api";
 import { AuthContext } from "../../context/AuthContext";
 import { useRouter } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -22,12 +22,14 @@ export default function MapScreen() {
     const [showHint, setShowHint] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [search, setSearch] = useState("");
+    const [searchResults, setSearchResults] = useState<any[]>([]);
     const mapRef = useRef<MapView>(null);
     const router = useRouter();
     const [address, setAddress] = useState("");
     const [description, setDescription] = useState("");
     const [priority, setPriority] = useState("medium");
     const [photo, setPhoto] = useState(null);
+    const [selectedReport, setSelectedReport] = useState<any>(null);
 
     useEffect(() => {
         if (token) loadReports();
@@ -56,27 +58,16 @@ export default function MapScreen() {
         }
 
         try {
-            const response = await fetch(
-                "http://192.168.178.30:5000/api/reports",
-                {
-                    method: "POST",
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: formData,
-                }
-            );
+            const result = await createReport(token, formData);
 
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.message || "Fehler beim Senden des Reports");
+            if (result.offline) {
+                alert("Report offline gespeichert. Er wird gesendet, sobald die Verbindung wiederhergestellt ist.");
+            } else {
+                alert("Report erfolgreich gesendet");
             }
 
-            alert("Report erfolgreich gesendet");
             setShowModal(false);
             await loadReports();
-
         } catch (error: any) {
             alert(error.message || "Fehler beim Senden");
         }
@@ -112,25 +103,55 @@ export default function MapScreen() {
         setReports(Array.isArray(data) ? data : data.reports || []);
     };
 
+    const fetchSearchSuggestions = async (query: string) => {
+        const trimmed = query.trim();
+        if (!trimmed) {
+            setSearchResults([]);
+            return [];
+        }
+
+        try {
+            const response = await fetch(
+                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(trimmed)}&limit=5`,
+                {
+                    headers: {
+                        "User-Agent": "InfrastructureReportingApp/1.0",
+                    },
+                }
+            );
+
+            const data = await response.json();
+            const results = Array.isArray(data) ? data : [];
+            setSearchResults(results);
+            return results;
+        } catch (error) {
+            setSearchResults([]);
+            return [];
+        }
+    };
+
+    const selectSearchResult = (result: any) => {
+        setSearch(result.display_name);
+        setSearchResults([]);
+        const lat = parseFloat(result.lat);
+        const lon = parseFloat(result.lon);
+        mapRef.current?.animateToRegion({
+            latitude: lat,
+            longitude: lon,
+            latitudeDelta: 0.05,
+            longitudeDelta: 0.05,
+        });
+    };
+
     const searchLocation = async () => {
-        if (!search) return;
+        if (!search.trim()) {
+            alert("Bitte einen Ort eingeben.");
+            return;
+        }
 
-        const response = await fetch(
-            `https://nominatim.openstreetmap.org/search?format=json&q=${search}`
-        );
-
-        const data = await response.json();
-
-        if (data.length > 0) {
-            const lat = parseFloat(data[0].lat);
-            const lon = parseFloat(data[0].lon);
-
-            mapRef.current?.animateToRegion({
-                latitude: lat,
-                longitude: lon,
-                latitudeDelta: 0.05,
-                longitudeDelta: 0.05,
-            });
+        const results = await fetchSearchSuggestions(search);
+        if (results.length > 0) {
+            selectSearchResult(results[0]);
         }
     };
 
@@ -173,11 +194,33 @@ export default function MapScreen() {
                     <TextInput
                         placeholder="Ort suchen..."
                         value={search}
-                        onChangeText={setSearch}
+                        onChangeText={(text) => {
+                            setSearch(text);
+                            fetchSearchSuggestions(text);
+                        }}
                         style={styles.searchInput}
+                        returnKeyType="search"
                         onSubmitEditing={searchLocation}
                     />
+                    <TouchableOpacity style={styles.searchButton} onPress={searchLocation}>
+                        <Text style={styles.searchButtonText}>Suchen</Text>
+                    </TouchableOpacity>
                 </View>
+                {searchResults.length > 0 && (
+                    <View style={styles.searchResults}>
+                        {searchResults.map((result) => (
+                            <TouchableOpacity
+                                key={result.place_id}
+                                style={styles.searchResultItem}
+                                onPress={() => selectSearchResult(result)}
+                            >
+                                <Text style={styles.searchResultText} numberOfLines={2}>
+                                    {result.display_name}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                )}
             </View>
 
             <MapView
@@ -212,7 +255,18 @@ export default function MapScreen() {
                             longitude: report.longitude,
                         }}
                         pinColor={getPriorityColor(report.priority)}
-                    />
+                        onPress={() => setSelectedReport(report)}
+                    >
+                        <Callout>
+                            <View style={styles.callout}>
+                                <Text style={styles.calloutTitle}>{report.title}</Text>
+                                <Text style={styles.calloutText}>{report.description}</Text>
+                                <Text style={styles.calloutMeta}>Status: {report.status}</Text>
+                                <Text style={styles.calloutMeta}>Priorität: {report.priority}</Text>
+                                <Text style={styles.calloutMeta}>Kategorie: {report.category}</Text>
+                            </View>
+                        </Callout>
+                    </Marker>
                 ))}
             </MapView>
 
@@ -226,6 +280,20 @@ export default function MapScreen() {
             >
                 <Text style={styles.fabText}>+</Text>
             </TouchableOpacity>
+
+            {selectedReport && (
+                <View style={styles.reportPreview}>
+                    <Text style={styles.previewTitle}>{selectedReport.title}</Text>
+                    <Text style={styles.previewText}>{selectedReport.description}</Text>
+                    <View style={styles.previewMetaRow}>
+                        <Text style={styles.previewMeta}>Status: {selectedReport.status}</Text>
+                        <Text style={styles.previewMeta}>Priorität: {selectedReport.priority}</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => setSelectedReport(null)} style={styles.previewClose}>
+                        <Text style={styles.previewCloseText}>Schließen</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
 
 
             {/* 🔥 PROFESSIONELLES BOTTOM SHEET */}
@@ -354,6 +422,40 @@ const styles = StyleSheet.create({
         marginLeft: 8,
     },
 
+    searchButton: {
+        backgroundColor: "#2563eb",
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        borderRadius: 12,
+        marginLeft: 10,
+    },
+
+    searchButtonText: {
+        color: "white",
+        fontWeight: "700",
+    },
+
+    searchResults: {
+        backgroundColor: "white",
+        borderRadius: 15,
+        paddingVertical: 8,
+        marginTop: 8,
+        elevation: 6,
+        maxHeight: 220,
+    },
+
+    searchResultItem: {
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+        borderBottomWidth: 1,
+        borderBottomColor: "#eee",
+    },
+
+    searchResultText: {
+        color: "#333",
+        fontSize: 14,
+    },
+
     fab: {
         position: "absolute",
         bottom: 40,
@@ -371,6 +473,53 @@ const styles = StyleSheet.create({
         color: "white",
         fontSize: 28,
         fontWeight: "bold",
+    },
+
+    reportPreview: {
+        position: "absolute",
+        bottom: 140,
+        left: 15,
+        right: 15,
+        backgroundColor: "rgba(255,255,255,0.95)",
+        borderRadius: 16,
+        padding: 14,
+        elevation: 8,
+    },
+
+    previewTitle: {
+        fontSize: 16,
+        fontWeight: "700",
+        marginBottom: 6,
+    },
+
+    previewText: {
+        fontSize: 14,
+        color: "#444",
+        marginBottom: 8,
+    },
+
+    previewMetaRow: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        marginBottom: 10,
+    },
+
+    previewMeta: {
+        fontSize: 13,
+        color: "#555",
+    },
+
+    previewClose: {
+        alignSelf: "flex-end",
+        paddingVertical: 8,
+        paddingHorizontal: 14,
+        backgroundColor: "#2563eb",
+        borderRadius: 12,
+    },
+
+    previewCloseText: {
+        color: "white",
+        fontWeight: "700",
     },
 
     hint: {

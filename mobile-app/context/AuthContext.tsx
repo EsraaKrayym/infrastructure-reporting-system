@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { setAuthToken } from "../services/api";
+import { setAuthToken, syncPendingReports } from "../services/api";
 
 export const AuthContext = createContext<any>(null);
 
@@ -14,6 +14,7 @@ export const AuthProvider = ({ children }: any) => {
                 setToken(storedToken);
                 setAuthToken(storedToken);
                 console.log("✅ Token geladen und in API gesetzt");
+                await syncPendingReports(storedToken);
             }
         };
         loadToken();
@@ -24,6 +25,7 @@ export const AuthProvider = ({ children }: any) => {
         setToken(newToken);
         setAuthToken(newToken);
         console.log("✅ Login erfolgreich, Token in API gesetzt");
+        await syncPendingReports(newToken);
     };
 
     const logout = async () => {

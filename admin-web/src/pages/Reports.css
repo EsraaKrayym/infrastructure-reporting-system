@@ -1,64 +1,124 @@
 .reports-container {
     padding: 40px;
-    background: #f3f4f6;
+    background: #eff2ff;
     min-height: 100vh;
 }
 
 .reports-title {
     margin-bottom: 30px;
-    font-size: 28px;
-    font-weight: 700;
+    font-size: 34px;
+    font-weight: 800;
+    color: #111827;
 }
 
 .reports-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-    gap: 25px;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    gap: 28px;
 }
 
 .report-card {
     background: white;
-    border-radius: 16px;
-    padding: 20px;
-    box-shadow: 0 6px 18px rgba(0,0,0,0.05);
-    transition: 0.25s;
+    border-radius: 28px;
+    padding: 0;
+    box-shadow: 0 20px 60px rgba(15, 23, 42, 0.12);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    overflow: hidden;
 }
 
 .report-card:hover {
-    transform: translateY(-5px);
+    transform: translateY(-6px);
+    box-shadow: 0 25px 70px rgba(15, 23, 42, 0.18);
 }
 
-.report-header {
+.report-top {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding: 22px 24px 0;
 }
 
-.report-header h3 {
-    font-size: 18px;
-    font-weight: 600;
+.report-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #eef2ff;
+    color: #3730a3;
+    padding: 10px 14px;
+    border-radius: 18px;
+    font-weight: 700;
+    font-size: 13px;
 }
 
-.priority-badge {
-    padding: 6px 14px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: bold;
+.status-pill {
+    padding: 10px 16px;
+    border-radius: 999px;
     color: white;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.report-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 18px 24px 0;
+}
+
+.report-title-row h3 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 800;
+    color: #111827;
+    line-height: 1.15;
+    flex: 1;
+}
+
+.status-label {
+    background: #e0f2fe;
+    color: #0369a1;
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.report-category {
+    display: inline-flex;
+    margin: 0 24px 18px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: #eef2ff;
+    color: #1d4ed8;
+    font-size: 12px;
+    font-weight: 700;
 }
 
 .report-image {
     width: 100%;
-    height: 200px;
+    height: 260px;
     object-fit: cover;
-    margin-top: 12px;
-    border-radius: 12px;
+    display: block;
+}
+
+.report-image.placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 260px;
+    background: #e2e8f0;
+    color: #475569;
+    font-weight: 600;
+    font-size: 14px;
 }
 
 .report-description {
-    margin-top: 15px;
-    font-size: 14px;
-    color: #333;
+    margin: 18px 24px 0;
+    font-size: 15px;
+    color: #334155;
+    line-height: 1.7;
 }
 
 .report-details {
@@ -70,29 +130,82 @@
     gap: 4px;
 }
 
-.report-actions {
-    margin-top: 18px;
+.report-contact-card {
+    margin: 20px 24px 0;
+    padding: 18px 20px;
     display: flex;
-    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    background: #f8fafc;
+    border-radius: 18px;
+    border: 1px solid #e2e8f0;
+}
+
+.contact-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.contact-subtitle {
+    margin-top: 4px;
+    font-size: 13px;
+    color: #64748b;
+}
+
+.contact-phone {
+    font-size: 14px;
+    font-weight: 700;
+    color: #2563eb;
+}
+
+.report-details-grid {
+    margin: 20px 24px 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 18px;
+    font-size: 14px;
+    color: #475569;
+}
+
+.map-link {
+    grid-column: span 2;
+    color: #2563eb;
+    text-decoration: none;
+    font-weight: 700;
+}
+
+.report-footer {
+    padding: 16px 24px 24px;
+    color: #64748b;
+    font-size: 13px;
+}
+
+.report-actions-large {
+    margin: 22px 24px 0;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 10px;
 }
 
 .btn {
     border: none;
-    padding: 8px 14px;
-    border-radius: 10px;
+    padding: 12px 14px;
+    border-radius: 14px;
     cursor: pointer;
     color: white;
     font-size: 13px;
-    font-weight: 500;
-    transition: 0.2s;
+    font-weight: 700;
+    transition: transform 0.2s ease, opacity 0.2s ease;
 }
 
 .btn:hover {
-    opacity: 0.85;
+    transform: translateY(-1px);
+    opacity: 0.95;
 }
 
 .status { background: #2563eb; }
 .edit { background: #16a34a; }
 .delete { background: #dc2626; }
 .history { background: #7c3aed; }
+.share { background: #22c55e; }
