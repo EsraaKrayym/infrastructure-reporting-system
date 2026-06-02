@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import authRoutes from "./routes/authRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
 import bcrypt from "bcryptjs";
+import userRoutes from "./routes/userRoutes.js";
 dotenv.config();
 
 console.log("JWT_SECRET:", process.env.JWT_SECRET);
@@ -11,7 +12,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use("/uploads", express.static("uploads"));
-
+app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/reports", reportRoutes);
 bcrypt.hash("123456", 10).then(hash => {

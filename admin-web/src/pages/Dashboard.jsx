@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getReports } from "../services/api";
 import "./Dashboard.css";
+import { Link } from "react-router-dom";
 
 export default function Dashboard({ token }) {
     const [reports, setReports] = useState([]);
@@ -22,10 +23,21 @@ export default function Dashboard({ token }) {
                 <h2 className="logo">Admin</h2>
 
                 <ul>
-                    <li className="active">Dashboard</li>
-                    <li>Reports</li>
-                    <li>Accounts</li>
-                    <li>Settings</li>
+                    <li>
+                        <Link to="/dashboard">Dashboard</Link>
+                    </li>
+
+                    <li>
+                        <Link to="/reports">Reports</Link>
+                    </li>
+
+                    <li>
+                        <Link to="/accounts">Accounts</Link>
+                    </li>
+
+                    <li>
+                        <Link to="/settings">Settings</Link>
+                    </li>
                 </ul>
             </div>
 

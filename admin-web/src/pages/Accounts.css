@@ -1,0 +1,27 @@
+.accounts-container {
+    padding: 40px;
+    background: #111;
+    color: white;
+    min-height: 100vh;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+th, td {
+    padding: 12px;
+    border-bottom: 1px solid #333;
+}
+
+button {
+    margin-right: 10px;
+    padding: 6px 10px;
+    background: #f15b64;
+    border: none;
+    color: white;
+    cursor: pointer;
+    border-radius: 5px;
+}
