@@ -4,11 +4,13 @@ import { getReports } from "@/services/api";
 import { AuthContext } from "@/context/AuthContext";
 
 export default function MyReports() {
-    const { token } = useContext(AuthContext);
+    const auth = useContext(AuthContext) as { token?: string | null } | null;
+    const token = auth?.token ?? null;
     const [reports, setReports] = useState<any[]>([]);
 
     useEffect(() => {
         const load = async () => {
+            if (!token) return;
             try {
                 const data = await getReports(token);
                 setReports(Array.isArray(data) ? data : data.reports || []);
