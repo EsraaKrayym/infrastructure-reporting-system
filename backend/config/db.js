@@ -1,60 +1,16 @@
-import sqlite3 from "sqlite3";
-import { open } from "sqlite";
-import path from "path";
-import { fileURLToPath } from "url";
+import pkg from "pg";
+const { Pool } = pkg;
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-console.log("DB PATH:", path.join(__dirname, "../database.sqlite"));
-
-const dbPromise = open({
-    filename: path.join(__dirname, "../database.sqlite"),
-    driver: sqlite3.Database
-}).then(async (db) => {
-
-    // 🔥 USERS TABLE
-    await db.exec(`
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT,
-            email TEXT UNIQUE,
-            password TEXT,
-            role TEXT DEFAULT 'citizen',
-            blocked INTEGER DEFAULT 0
-        );
-    `);
-
-    // 🔥 REPORTS TABLE
-    await db.exec(`
-        CREATE TABLE IF NOT EXISTS reports (
-                                               id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                               title TEXT,
-                                               description TEXT,
-                                               category TEXT,
-                                               latitude REAL,
-                                               longitude REAL,
-                                               status TEXT DEFAULT 'Neu',
-                                               priority TEXT DEFAULT 'medium',
-                                               address TEXT,
-                                               photo TEXT,
-                                               user_id INTEGER,
-                                               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                                               FOREIGN KEY (user_id) REFERENCES users(id)
-            );
-    `);
-
-    // 🔥 AUDIT LOG TABLE
-    await db.exec(`
-        CREATE TABLE IF NOT EXISTS audit_logs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            report_id INTEGER,
-            changed_by INTEGER,
-            action TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-    `);
-
-    return db;
+const pool = new Pool({
+    user: "postgres",
+    host: "localhost",
+    database: "infrastructure_db",
+    password: "saso.hell835",
+    port: 5432,
 });
 
-export default dbPromise;
+pool.connect()
+    .then(() => console.log("PostgreSQL connected ✅"))
+    .catch(err => console.error("PostgreSQL error ❌", err));
+
+export default pool;
