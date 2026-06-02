@@ -1,60 +1,23 @@
-import dbPromise from "../config/db.js";
+import pool from "../config/db.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
-
-
-
-
-export const register = async (req, res) => {
-    try {
-        const db = await dbPromise;
-        const { name, email, password } = req.body;
-
-        if (!name || !email || !password) {
-            return res.status(400).json({ message: "All fields are required" });
-        }
-
-        const existingUser = await db.get(
-            "SELECT * FROM users WHERE email = ?",
-            [email]
-        );
-
-        if (existingUser) {
-            return res.status(400).json({ message: "Email already exists" });
-        }
-
-        const hashedPassword = await bcrypt.hash(password, 10);
-
-        await db.run(
-            "INSERT INTO users (name, email, password, role, blocked) VALUES (?, ?, ?, ?, ?)",
-            [name, email, hashedPassword, "citizen", 0]
-        );
-
-        res.status(201).json({ message: "User registered successfully" });
-
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-};
-
-
 export const login = async (req, res) => {
     try {
-        const db = await dbPromise;
         const { email, password } = req.body;
 
-        const user = await db.get(
-            "SELECT * FROM users WHERE email = ?",
+        const result = await pool.query(
+            "SELECT * FROM users WHERE email = $1",
             [email]
         );
 
-        if (!user) {
+        if (result.rows.length === 0) {
             return res.status(401).json({ message: "Invalid credentials" });
         }
 
-        // 🔥 Block-Prüfung gehört hier rein
-        if (user.blocked === 1) {
+        const user = result.rows[0];
+
+        if (user.blocked) {
             return res.status(403).json({ message: "Account blocked" });
         }
 
@@ -66,7 +29,7 @@ export const login = async (req, res) => {
 
         const token = jwt.sign(
             { id: user.id, role: user.role },
-            process.env.JWT_SECRET,
+            process.env.JWT_SECRET || "supersecretkey",
             { expiresIn: "1d" }
         );
 
@@ -78,6 +41,38 @@ export const login = async (req, res) => {
                 email: user.email,
                 role: user.role
             }
+        });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: error.message });
+    }
+};
+export const register = async (req, res) => {
+    try {
+        const { name, email, password } = req.body;
+
+        const existingUser = await pool.query(
+            "SELECT * FROM users WHERE email = $1",
+            [email]
+        );
+
+        if (existingUser.rows.length > 0) {
+            return res.status(400).json({ message: "Email already exists" });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const result = await pool.query(
+            `INSERT INTO users (name, email, password)
+             VALUES ($1, $2, $3)
+             RETURNING id`,
+            [name, email, hashedPassword]
+        );
+
+        res.status(201).json({
+            message: "User registered successfully",
+            id: result.rows[0].id
         });
 
     } catch (error) {

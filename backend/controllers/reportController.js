@@ -1,12 +1,10 @@
-import dbPromise from "../config/db.js";
+import pool from "../config/db.js";
 
 /* =========================================
    CREATE REPORT (Citizen)
 ========================================= */
 export const createReport = async (req, res) => {
     try {
-        const db = await dbPromise;
-
         const {
             title,
             description,
@@ -17,7 +15,6 @@ export const createReport = async (req, res) => {
             address
         } = req.body;
 
-        // Photo nur wenn es in der FormData kommt (für Admin-Web)
         const photo = req.file ? req.file.filename : null;
 
         if (!title || !category) {
@@ -26,17 +23,11 @@ export const createReport = async (req, res) => {
             });
         }
 
-        console.log("🔍 CREATE REPORT DEBUG:");
-        console.log("  Title:", title);
-        console.log("  User ID:", req.user.id);
-        console.log("  Role:", req.user.role);
-        console.log("  Latitude:", latitude);
-        console.log("  Longitude:", longitude);
-
-        const result = await db.run(
+        const result = await pool.query(
             `INSERT INTO reports
-             (title, description, category, latitude, longitude, user_id, status, priority, address, photo)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            (title, description, category, latitude, longitude, user_id, status, priority, address, photo)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+            RETURNING id`,
             [
                 title,
                 description || "Keine Beschreibung",
@@ -51,17 +42,13 @@ export const createReport = async (req, res) => {
             ]
         );
 
-        console.log("✅ INSERT DONE - ID:", result.lastID);
-        
         return res.status(201).json({
             message: "Report erfolgreich gespeichert",
-            id: result.lastID
+            id: result.rows[0].id
         });
 
     } catch (error) {
-        console.error("❌ CREATE REPORT ERROR:", error);
-        console.error("REQUEST BODY:", req.body);
-        console.error("REQUEST USER:", req.user);
+        console.error("CREATE REPORT ERROR:", error);
         res.status(500).json({ message: error.message });
     }
 };
@@ -69,26 +56,23 @@ export const createReport = async (req, res) => {
 
 /* =========================================
    GET REPORTS
-   Citizen → eigene
-   Caseworker → alle
 ========================================= */
 export const getReports = async (req, res) => {
     try {
-        const db = await dbPromise;
 
-        // Citizen → nur eigene Reports
         if (req.user.role === "citizen") {
-            const reports = await db.all(
-                "SELECT * FROM reports WHERE user_id = ?",
+            const result = await pool.query(
+                "SELECT * FROM reports WHERE user_id = $1 ORDER BY created_at DESC",
                 [req.user.id]
             );
-            return res.json(reports);
+            return res.json(result.rows);
         }
 
-        // Caseworker → alle Reports
         if (req.user.role === "caseworker") {
-            const reports = await db.all("SELECT * FROM reports");
-            return res.json(reports);
+            const result = await pool.query(
+                "SELECT * FROM reports ORDER BY created_at DESC"
+            );
+            return res.json(result.rows);
         }
 
         res.status(403).json({ message: "Access denied" });
@@ -100,43 +84,36 @@ export const getReports = async (req, res) => {
 
 
 /* =========================================
-   UPDATE STATUS (Caseworker only)
-   + Audit Log
+   UPDATE STATUS
 ========================================= */
 export const updateReportStatus = async (req, res) => {
     try {
-        const db = await dbPromise;
         const { id } = req.params;
         const { status } = req.body;
 
-        // Nur Caseworker darf Status ändern
         if (req.user.role !== "caseworker") {
             return res.status(403).json({ message: "Caseworker access required" });
         }
 
-        // Alten Status holen
-        const report = await db.get(
-            "SELECT status FROM reports WHERE id = ?",
+        const result = await pool.query(
+            "SELECT status FROM reports WHERE id = $1",
             [id]
         );
 
-        if (!report) {
+        if (result.rows.length === 0) {
             return res.status(404).json({ message: "Report not found" });
         }
 
-        const oldStatus = report.status;
+        const oldStatus = result.rows[0].status;
 
-        // Status aktualisieren
-        await db.run(
-            "UPDATE reports SET status = ? WHERE id = ?",
+        await pool.query(
+            "UPDATE reports SET status = $1 WHERE id = $2",
             [status, id]
         );
 
-        // 🔥 Audit Log speichern
-        await db.run(
-            `INSERT INTO audit_logs 
-            (report_id, changed_by, action) 
-            VALUES (?, ?, ?)`,
+        await pool.query(
+            `INSERT INTO audit_logs (report_id, changed_by, action)
+             VALUES ($1,$2,$3)`,
             [
                 id,
                 req.user.id,
@@ -149,28 +126,35 @@ export const updateReportStatus = async (req, res) => {
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
-
-
 };
+
+
+/* =========================================
+   UPDATE PRIORITY
+========================================= */
 export const updatePriority = async (req, res) => {
-    const db = await dbPromise;
-    const { id } = req.params;
-    const { priority } = req.body;
+    try {
+        const { id } = req.params;
+        const { priority } = req.body;
 
-    if (req.user.role !== "caseworker") {
-        return res.status(403).json({ message: "Caseworker access required" });
+        if (req.user.role !== "caseworker") {
+            return res.status(403).json({ message: "Caseworker access required" });
+        }
+
+        await pool.query(
+            "UPDATE reports SET priority = $1 WHERE id = $2",
+            [priority, id]
+        );
+
+        await pool.query(
+            `INSERT INTO audit_logs (report_id, changed_by, action)
+             VALUES ($1,$2,$3)`,
+            [id, req.user.id, `Priority changed to ${priority}`]
+        );
+
+        res.json({ message: "Priority updated" });
+
+    } catch (error) {
+        res.status(500).json({ message: error.message });
     }
-
-    await db.run(
-        "UPDATE reports SET priority = ? WHERE id = ?",
-        [priority, id]
-    );
-
-    await db.run(
-        `INSERT INTO audit_logs (report_id, changed_by, action)
-         VALUES (?, ?, ?)`,
-        [id, req.user.id, `Priority changed to ${priority}`]
-    );
-
-    res.json({ message: "Priority updated" });
 };
