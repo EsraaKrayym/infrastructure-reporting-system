@@ -1,23 +1,23 @@
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 
-const JWT_SECRET = process.env.JWT_SECRET;
-dotenv.config();
+dotenv.config(); // MUSS GANZ OBEN stehen
 
 export const verifyToken = (req, res, next) => {
-    const authHeader = req.headers.authorization;
+    const header = req.headers.authorization;
 
-    if (!authHeader) {
-        return res.status(403).json({ message: "Access denied" });
+    if (!header) {
+        return res.status(401).json({ message: "No token provided" });
     }
 
-    const token = authHeader.split(" ")[1];
+    const token = header.split(" ")[1];
 
     try {
-        const decoded = jwt.verify(token,process.env.JWT_SECRET);
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         req.user = decoded;
         next();
-    } catch (error) {
+    } catch (err) {
+        console.log("JWT ERROR:", err.message);
         return res.status(401).json({ message: "Invalid token" });
     }
 };

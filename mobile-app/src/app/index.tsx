@@ -1,7 +1,10 @@
-import pool from "../config/db.js";
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
 
+import { useState, useContext } from "react";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet } from "react-native";
+import { AuthContext } from "@/context/AuthContext";
+import { loginUser } from "@/services/api";
+import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 export const login = async (req, res) => {
     try {
         const { email, password } = req.body;

@@ -1,83 +1,50 @@
 import { useState } from "react";
 import { login } from "../services/api";
+import { useNavigate } from "react-router-dom";
 import "./Login.css";
 
-export default function Login({ setToken }) {
+export default function Login() {
+    const navigate = useNavigate();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
-    const [showPassword, setShowPassword] = useState(false);
-    const [error, setError] = useState("");
 
-    const handleLogin = async () => {
+    const handleLogin = async (e) => {
+        e.preventDefault();
+
         try {
             const res = await login({ email, password });
 
-            console.log("LOGIN RESPONSE:", res.data);
-
-            // 🔥 Prüfen ob user existiert
-            if (!res.data || !res.data.token) {
-                setError("Ungültige Serverantwort");
-                return;
-            }
-
-            // 🔥 Optional: Rolle prüfen
-            if (res.data.user?.role !== "caseworker") {
-                setError("Kein Admin-Zugang");
-                return;
-            }
-
-            // ✅ Token speichern
             localStorage.setItem("token", res.data.token);
-            setToken(res.data.token);
+            localStorage.setItem("user", JSON.stringify(res.data.user));
 
+            navigate("/dashboard");
         } catch (err) {
-            console.error("LOGIN ERROR:", err);
-            setError("Login fehlgeschlagen");
+            alert("Login fehlgeschlagen");
         }
     };
 
     return (
-        <div className="loginWrapper">
-            <div className="loginBox">
+        <div className="login-container">
+            <div className="login-box">
+                <h2>Admin Login</h2>
 
-                <div className="logo">CityReport</div>
-
-                <h2>Login</h2>
-                <p>Schön, Sie wiederzusehen.</p>
-
-                {error && <div className="error">{error}</div>}
-
-                <label>Email</label>
-                <input
-                    type="email"
-                    placeholder="example@email.com"
-                    onChange={(e) => setEmail(e.target.value)}
-                />
-
-                <label>Passwort</label>
-                <div className="passwordField">
+                <form onSubmit={handleLogin}>
                     <input
-                        type={showPassword ? "text" : "password"}
-                        placeholder="••••••••"
+                        type="email"
+                        placeholder="admin@city.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                    />
+
+                    <input
+                        type="password"
+                        placeholder="Passwort"
+                        value={password}
                         onChange={(e) => setPassword(e.target.value)}
                     />
-                    <span
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="eye"
-                    >
-            👁
-          </span>
-                </div>
 
-                <button onClick={handleLogin}>
-                    Login
-                </button>
-
-                <div className="links">
-                    <span>Passwort vergessen?</span>
-                    <span className="register">Registrierung</span>
-                </div>
-
+                    <button type="submit">Login</button>
+                </form>
             </div>
         </div>
     );
