@@ -1,8 +1,4 @@
-.reports-container {
-    padding: 40px;
-    background: #eff2ff;
-    min-height: 100vh;
-}
+
 
 .reports-title {
     margin-bottom: 30px;
@@ -209,3 +205,38 @@
 .delete { background: #dc2626; }
 .history { background: #7c3aed; }
 .share { background: #22c55e; }
+
+.reports-layout {
+    display: flex;
+    min-height: 100vh;
+    background: #eff2ff;
+}
+
+.reports-content {
+    flex: 1;
+    padding: 40px;
+    overflow-y: auto;
+}
+
+.reports-container {
+    padding: 0;
+    background: transparent;
+    min-height: auto;
+}
+
+.reports-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.updated-text {
+    color: #64748b;
+    margin-top: 8px;
+}
+
+.error-message {
+    color: red;
+    margin-bottom: 20px;
+}

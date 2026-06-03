@@ -3,6 +3,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Benutzer from "./pages/Benutzer";
 import ReportsMap from "./pages/ReportsMap";
+import Reports from "./pages/Reports";
 
 function ProtectedRoute({ children }) {
   const token = localStorage.getItem("token");
@@ -40,7 +41,7 @@ function App() {
                 }
             />
             <Route path="/map" element={<ReportsMap />} />
-
+            <Route path="/reports" element={<Reports />} />
           {/* Default Route */}
           <Route path="*" element={<Navigate to="/login" />} />
         </Routes>

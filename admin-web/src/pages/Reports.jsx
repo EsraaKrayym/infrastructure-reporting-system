@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import API from "../services/api";
 import "./Reports.css";
+import { Link } from "react-router-dom";
 
 const uploadBaseUrl = API.defaults.baseURL.replace(/\/api$/, "");
 
@@ -21,19 +22,19 @@ export default function Reports() {
                 return;
             }
 
-            console.log("Loading reports with token:", token.substring(0, 20) + "...");
-
             const res = await API.get("/reports", {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
-            console.log("Reports loaded:", res.data);
             setReports(res.data || []);
             setError("");
             setLastUpdated(new Date());
         } catch (err) {
-            console.error("Fehler beim Laden:", err);
-            setError(err.response?.data?.message || err.message || "Fehler beim Laden der Reports");
+            setError(
+                err.response?.data?.message ||
+                err.message ||
+                "Fehler beim Laden der Reports"
+            );
         } finally {
             setLoading(false);
         }
@@ -50,9 +51,9 @@ export default function Reports() {
             case "high":
                 return "#dc2626";
             case "medium":
-                return "#16a34a";
+                return "#f59e0b";
             case "low":
-                return "#0f766e";
+                return "#16a34a";
             default:
                 return "#2563eb";
         }
@@ -67,7 +68,7 @@ export default function Reports() {
             case "low":
                 return "Leicht";
             default:
-                return priority;
+                return priority || "Unbekannt";
         }
     };
 
@@ -91,89 +92,227 @@ export default function Reports() {
     };
 
     return (
-        <div className="reports-container">
-            <div className="reports-header">
-                <h2 className="reports-title">Alle Meldungen</h2>
-                <button className="btn refresh" onClick={loadReports} disabled={loading}>
-                    {loading ? "Lädt..." : "Aktualisieren"}
-                </button>
+        <div className="reports-layout">
+
+            {/* SIDEBAR */}
+            <div className="sidebar">
+
+                <div className="sidebar-header">
+                    <h1>CityReport</h1>
+                </div>
+
+                <div className="menu">
+                    <Link to="/dashboard" className="menu-item">
+                        📊 Dashboard
+                    </Link>
+
+                    <Link to="/reports" className="menu-item active">
+                        📋 Meldungen
+                    </Link>
+
+                    <Link to="/users" className="menu-item">
+                        👥 Benutzer
+                    </Link>
+
+                    <Link to="/categories" className="menu-item">
+                        🏷 Kategorien
+                    </Link>
+
+                    <Link to="/map" className="menu-item">
+                        🗺 Map
+                    </Link>
+
+                    <Link to="/notifications" className="menu-item">
+                        🔔 Benachrichtigungen
+                    </Link>
+
+                    <Link to="/statistics" className="menu-item">
+                        📈 Statistiken
+                    </Link>
+
+                    <Link to="/settings" className="menu-item">
+                        ⚙ Einstellungen
+                    </Link>
+                </div>
+
+                <div className="admin-box">
+                    <div className="avatar">A</div>
+
+                    <div>
+                        <h4>Administrator</h4>
+                        <p>admin@cityreport.de</p>
+                    </div>
+                </div>
+
             </div>
 
-            {loading && <p>⏳ Wird geladen...</p>}
-            {error && <p style={{ color: "red" }}>❌ {error}</p>}
-            {lastUpdated && !loading && !error && (
-                <p style={{ marginBottom: 16, color: "#555" }}>
-                    Zuletzt aktualisiert: {new Date(lastUpdated).toLocaleTimeString()}
-                </p>
-            )}
-            {!loading && reports.length === 0 && !error && (
-                <p>Keine Reports gefunden</p>
-            )}
+            {/* MAIN CONTENT */}
+            <div className="reports-content">
 
-            <div className="reports-grid">
-                {reports.map((report) => {
-                    const createdAt = report.created_at || report.createdAt || report.createdAt;
-                    const createdDate = createdAt ? new Date(createdAt).toLocaleDateString("de-DE") : "Unbekannt";
-                    const mapUrl = `https://www.google.com/maps/search/?api=1&query=${report.latitude},${report.longitude}`;
-                    return (
-                        <div key={report.id} className="report-card">
-                            <div className="report-top">
-                                <span className="report-badge">#{report.id ?? "--"}</span>
-                                <span className="status-pill" style={{ background: getPriorityColor(report.priority) }}>
-                                    {translatePriority(report.priority)}
-                                </span>
-                            </div>
+                <div className="reports-header">
+                    <div>
+                        <h2 className="reports-title">Alle Meldungen</h2>
 
-                            <div className="report-title-row">
-                                <h3>{report.title || "Unbenannte Meldung"}</h3>
-                                <span className="status-label">{getStatusLabel(report.status)}</span>
-                            </div>
-
-                            <div className="report-category">{report.category || "Allgemein"}</div>
-
-                            {report.photo ? (
-                                <img
-                                    src={`${uploadBaseUrl}/uploads/${report.photo}`}
-                                    alt="report"
-                                    className="report-image"
-                                />
-                            ) : (
-                                <div className="report-image placeholder">Kein Foto vorhanden</div>
-                            )}
-
-                            <p className="report-description">
-                                {report.description || "Keine Beschreibung verfügbar."}
+                        {lastUpdated && !loading && !error && (
+                            <p className="updated-text">
+                                Zuletzt aktualisiert:{" "}
+                                {new Date(lastUpdated).toLocaleTimeString()}
                             </p>
+                        )}
+                    </div>
 
-                            <div className="report-contact-card">
-                                <div>
-                                    <div className="contact-name">Reporter #{report.user_id || "unbekannt"}</div>
-                                    <div className="contact-subtitle">Admin User</div>
+                    <button
+                        className="btn refresh"
+                        onClick={loadReports}
+                        disabled={loading}
+                    >
+                        {loading ? "Lädt..." : "Aktualisieren"}
+                    </button>
+                </div>
+
+                {loading && <p>⏳ Wird geladen...</p>}
+
+                {error && (
+                    <p className="error-message">
+                        ❌ {error}
+                    </p>
+                )}
+
+                {!loading && reports.length === 0 && !error && (
+                    <p>Keine Reports gefunden</p>
+                )}
+
+                <div className="reports-grid">
+                    {reports.map((report) => {
+                        const createdAt =
+                            report.created_at || report.createdAt;
+
+                        const createdDate = createdAt
+                            ? new Date(createdAt).toLocaleDateString("de-DE")
+                            : "Unbekannt";
+
+                        const mapUrl =
+                            `https://www.google.com/maps/search/?api=1&query=${report.latitude},${report.longitude}`;
+
+                        return (
+                            <div key={report.id} className="report-card">
+
+                                <div className="report-top">
+                                    <span className="report-badge">
+                                        #{report.id ?? "--"}
+                                    </span>
+
+                                    <span
+                                        className="status-pill"
+                                        style={{
+                                            background: getPriorityColor(report.priority)
+                                        }}
+                                    >
+                                        {translatePriority(report.priority)}
+                                    </span>
                                 </div>
-                                <div className="contact-phone">+49 170 0000000</div>
-                            </div>
 
-                            <div className="report-details report-details-grid">
-                                <div><strong>Lat:</strong> {report.latitude ?? "-"}</div>
-                                <div><strong>Lng:</strong> {report.longitude ?? "-"}</div>
-                                <a className="map-link" href={mapUrl} target="_blank" rel="noreferrer">Auf Google Maps ansehen</a>
-                            </div>
+                                <div className="report-title-row">
+                                    <h3>
+                                        {report.title || "Unbenannte Meldung"}
+                                    </h3>
 
-                            <div className="report-actions report-actions-large">
-                                <button className="btn status">Status</button>
-                                <button className="btn edit">Bearbeiten</button>
-                                <button className="btn delete">Löschen</button>
-                                <button className="btn history">Verlauf</button>
-                                <button className="btn share">WhatsApp</button>
-                            </div>
+                                    <span className="status-label">
+                                        {getStatusLabel(report.status)}
+                                    </span>
+                                </div>
 
-                            <div className="report-footer">
-                                <span>{createdDate}</span>
+                                <div className="report-category">
+                                    {report.category || "Allgemein"}
+                                </div>
+
+                                {report.photo ? (
+                                    <img
+                                        src={`${uploadBaseUrl}/uploads/${report.photo}`}
+                                        alt="report"
+                                        className="report-image"
+                                    />
+                                ) : (
+                                    <div className="report-image placeholder">
+                                        Kein Foto vorhanden
+                                    </div>
+                                )}
+
+                                <p className="report-description">
+                                    {report.description ||
+                                        "Keine Beschreibung verfügbar."}
+                                </p>
+
+                                <div className="report-contact-card">
+                                    <div>
+                                        <div className="contact-name">
+                                            Reporter #{report.user_id || "unbekannt"}
+                                        </div>
+
+                                        <div className="contact-subtitle">
+                                            Admin User
+                                        </div>
+                                    </div>
+
+                                    <div className="contact-phone">
+                                        +49 170 0000000
+                                    </div>
+                                </div>
+
+                                <div className="report-details report-details-grid">
+                                    <div>
+                                        <strong>Lat:</strong>{" "}
+                                        {report.latitude ?? "-"}
+                                    </div>
+
+                                    <div>
+                                        <strong>Lng:</strong>{" "}
+                                        {report.longitude ?? "-"}
+                                    </div>
+
+                                    <a
+                                        className="map-link"
+                                        href={mapUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                    >
+                                        Auf Google Maps ansehen
+                                    </a>
+                                </div>
+
+                                <div className="report-actions report-actions-large">
+                                    <button className="btn status">
+                                        Status
+                                    </button>
+
+                                    <button className="btn edit">
+                                        Bearbeiten
+                                    </button>
+
+                                    <button className="btn delete">
+                                        Löschen
+                                    </button>
+
+                                    <button className="btn history">
+                                        Verlauf
+                                    </button>
+
+                                    <button className="btn share">
+                                        WhatsApp
+                                    </button>
+                                </div>
+
+                                <div className="report-footer">
+                                    <span>{createdDate}</span>
+                                </div>
+
                             </div>
-                        </div>
-                    );
-                })}
+                        );
+                    })}
+                </div>
+
             </div>
+
         </div>
     );
 }
