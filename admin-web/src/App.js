@@ -1,7 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
-import Accounts from "./pages/Accounts";
+import Benutzer from "./pages/Benutzer";
+import ReportsMap from "./pages/ReportsMap";
 
 function ProtectedRoute({ children }) {
   const token = localStorage.getItem("token");
@@ -29,15 +30,17 @@ function App() {
                 </ProtectedRoute>
               }
           />
-            {/* Accounts */}
+            {/* Benutzer */}
             <Route
-                path="/accounts"
+                path="/benutzer"
                 element={
                     <ProtectedRoute>
-                        <Accounts />
+                        <Benutzer />
                     </ProtectedRoute>
                 }
             />
+            <Route path="/map" element={<ReportsMap />} />
+
           {/* Default Route */}
           <Route path="*" element={<Navigate to="/login" />} />
         </Routes>

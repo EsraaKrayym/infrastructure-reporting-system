@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import API from "../services/api";
-import "./Accounts.css";
+import "./Benutzer.css";
 
-export default function Accounts() {
+export default function Benutzer() {
     const [users, setUsers] = useState([]);
 
     const loadUsers = async () => {
