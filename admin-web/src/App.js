@@ -5,6 +5,7 @@ import Benutzer from "./pages/Benutzer";
 import ReportsMap from "./pages/ReportsMap";
 import Reports from "./pages/Reports";
 
+
 function ProtectedRoute({ children }) {
   const token = localStorage.getItem("token");
 
@@ -33,12 +34,9 @@ function App() {
           />
             {/* Benutzer */}
             <Route
-                path="/benutzer"
-                element={
-                    <ProtectedRoute>
-                        <Benutzer />
-                    </ProtectedRoute>
-                }
+                path="/users"
+                element={<Benutzer
+                />}
             />
             <Route path="/map" element={<ReportsMap />} />
             <Route path="/reports" element={<Reports />} />

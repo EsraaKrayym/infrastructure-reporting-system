@@ -1,27 +1,116 @@
-.accounts-container {
-    padding: 40px;
-    background: #111;
-    color: white;
-    min-height: 100vh;
+.layout{
+    display:flex;
+    min-height:100vh;
+    background:#f5f7fb;
 }
 
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 20px;
+.users-content{
+    flex:1;
+    padding:35px;
 }
 
-th, td {
-    padding: 12px;
-    border-bottom: 1px solid #333;
+.users-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:30px;
 }
 
-button {
-    margin-right: 10px;
-    padding: 6px 10px;
-    background: #f15b64;
-    border: none;
-    color: white;
-    cursor: pointer;
-    border-radius: 5px;
+.users-header h1{
+    font-size:38px;
+    color:#111827;
+}
+
+.users-header p{
+    color:#64748b;
+}
+
+.add-user-btn{
+    background:#22c55e;
+    color:white;
+    border:none;
+    padding:14px 22px;
+    border-radius:12px;
+    cursor:pointer;
+    font-weight:700;
+}
+
+.filters{
+    display:flex;
+    gap:15px;
+    margin-bottom:25px;
+}
+
+.search-input{
+    flex:1;
+    padding:14px;
+    border:1px solid #ddd;
+    border-radius:10px;
+}
+
+.filters select{
+    padding:14px;
+    border-radius:10px;
+    border:1px solid #ddd;
+}
+
+.table-card{
+    background:white;
+    border-radius:20px;
+    padding:20px;
+    box-shadow:0 5px 15px rgba(0,0,0,.05);
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+th{
+    text-align:left;
+    padding:18px;
+    color:#64748b;
+    border-bottom:1px solid #eee;
+}
+
+td{
+    padding:18px;
+    border-bottom:1px solid #f1f1f1;
+}
+
+.role-badge{
+    background:#dbeafe;
+    color:#1d4ed8;
+    padding:8px 12px;
+    border-radius:20px;
+    font-size:12px;
+    font-weight:bold;
+}
+
+.status-badge{
+    background:#dcfce7;
+    color:#15803d;
+    padding:8px 12px;
+    border-radius:20px;
+    font-size:12px;
+    font-weight:bold;
+}
+
+.edit-btn{
+    background:#2563eb;
+    color:white;
+    border:none;
+    padding:8px 12px;
+    border-radius:8px;
+    margin-right:8px;
+    cursor:pointer;
+}
+
+.delete-btn{
+    background:#dc2626;
+    color:white;
+    border:none;
+    padding:8px 12px;
+    border-radius:8px;
+    cursor:pointer;
 }
