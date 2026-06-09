@@ -11,7 +11,7 @@ import {
 } from "react-leaflet";
 
 import "leaflet/dist/leaflet.css";
-import "./ReportsMap.css";
+import "../css/ReportsMap.css";
 
 export default function ReportsMap({ token }) {
 

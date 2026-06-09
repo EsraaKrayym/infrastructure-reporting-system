@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import "./Benutzer.css";
+import "../css/Benutzer.css";
 
 export default function Benutzer() {
 

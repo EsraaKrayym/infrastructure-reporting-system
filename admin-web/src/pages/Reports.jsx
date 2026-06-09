@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import API from "../services/api";
-import "./Reports.css";
+import "../css/Reports.css";
 import { Link } from "react-router-dom";
 
 const uploadBaseUrl = API.defaults.baseURL.replace(/\/api$/, "");

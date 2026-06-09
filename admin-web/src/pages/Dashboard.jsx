@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { getReports } from "../services/api";
 import { Link } from "react-router-dom";
-import "./Dashboard.css";
+import "../css/Dashboard.css";
 
 export default function Dashboard({ token }) {
     const [reports, setReports] = useState([]);

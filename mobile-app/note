@@ -13,3 +13,10 @@ Invoke-RestMethod -Method GET `
 ##### mobil app
 test@test.com
 123456
+############### SQL
+UPDATE users
+SET password = '$2a$10$xkxcQDLmTDZa8hNMLu8emuGoLwfA7yVlV6FvHCGD96ZJ8cG8CcVk2'
+WHERE email = 'admin@city.com';
+SELECT id, email, role FROM users;
+SELECT * FROM reports LIMIT 5;
+SELECT * FROM reports;
