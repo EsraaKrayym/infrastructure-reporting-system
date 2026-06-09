@@ -84,6 +84,18 @@ export default function Login() {
                                 {showPassword ? "🙈" : "👁"}
                             </button>
 
+                            <div className="login-links">
+
+                                <a href="/forgot-password">
+                                    Passwort vergessen?
+                                </a>
+
+                                <a href="/register">
+                                    Registrieren
+                                </a>
+
+                            </div>
+
                         </div>
 
                         <button

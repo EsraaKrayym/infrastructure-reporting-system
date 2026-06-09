@@ -4,6 +4,8 @@ import Dashboard from "./pages/Dashboard";
 import Benutzer from "./pages/Benutzer";
 import ReportsMap from "./pages/ReportsMap";
 import Reports from "./pages/Reports";
+import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
 
 
 function ProtectedRoute({ children }) {
@@ -42,6 +44,15 @@ function App() {
             <Route path="/reports" element={<Reports />} />
           {/* Default Route */}
           <Route path="*" element={<Navigate to="/login" />} />
+            <Route
+                path="/register"
+                element={<Register />}
+            />
+
+            <Route
+                path="/forgot-password"
+                element={<ForgotPassword />}
+            />
         </Routes>
       </BrowserRouter>
 
