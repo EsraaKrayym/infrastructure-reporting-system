@@ -6,10 +6,13 @@ import "../css/Dashboard.css";
 export default function Dashboard({ token }) {
     const [reports, setReports] = useState([]);
 
+    //useEffect(() => {
+        //loadReports();
+    //}, []);
     useEffect(() => {
         loadReports();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
-
     const loadReports = async () => {
         try {
             const res = await getReports(token);
