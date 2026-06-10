@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../css/Login.css";
+import { register } from "../services/api";
 
 export default function Register() {
-
+    const [role, setRole] = useState("caseworker");
     const navigate = useNavigate();
 
     const [name,setName] = useState("");
@@ -11,14 +12,28 @@ export default function Register() {
     const [password,setPassword] = useState("");
 
     const handleRegister = async (e) => {
-
         e.preventDefault();
 
-        // später API Call
+        try {
 
-        alert("Benutzer erfolgreich registriert");
+            await register({
+                name,
+                email,
+                password,
+                role
+            });
 
-        navigate("/");
+            alert("Benutzer erfolgreich registriert");
+
+            navigate("/");
+
+        } catch (err) {
+
+            alert(
+                err.response?.data?.message ||
+                "Registrierung fehlgeschlagen"
+            );
+        }
     };
 
     return (
@@ -72,7 +87,8 @@ export default function Register() {
                             required
                         />
 
-                        <select className="role-select">
+                        <select className="role-select"value={role}
+                                onChange={(e) => setRole(e.target.value)}>
 
                             <option value="caseworker">
                                 Sachbearbeiter

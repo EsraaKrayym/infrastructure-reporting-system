@@ -20,5 +20,6 @@ export const login = (data) =>
 
 export const getReports = () =>
     API.get("/reports");
-
+export const register = (data) =>
+    API.post("/auth/register", data);
 export default API;
