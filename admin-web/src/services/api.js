@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const API = axios.create({
-    baseURL:  "http://https://cityreport-backend.onrender.com/api"
+    baseURL:  "https://cityreport-backend.onrender.com/api"
     //baseURL: "http://localhost:5000/api"
 });
 

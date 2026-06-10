@@ -1,5 +1,5 @@
-const API_URL = "http://192.168.178.30:5000/api";
-
+//const API_URL = "http://192.168.178.30:5000/api";
+const API_URL = "https://cityreport-backend.onrender.com/api";
 export const loginUser = async (email: string, password: string) => {
     const res = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
