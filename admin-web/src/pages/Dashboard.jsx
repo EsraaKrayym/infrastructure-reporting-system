@@ -6,9 +6,6 @@ import "../css/Dashboard.css";
 export default function Dashboard({ token }) {
     const [reports, setReports] = useState([]);
 
-    //useEffect(() => {
-        //loadReports();
-    //}, []);
     useEffect(() => {
         const loadReports = async () => {
             try {
