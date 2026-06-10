@@ -50,7 +50,7 @@ export const login = async (req, res) => {
 };
 export const register = async (req, res) => {
     try {
-        const { name, email, password } = req.body;
+        const { name, email, password, role } = req.body;
 
         const existingUser = await pool.query(
             "SELECT * FROM users WHERE email = $1",
@@ -64,10 +64,10 @@ export const register = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const result = await pool.query(
-            `INSERT INTO users (name, email, password)
-             VALUES ($1, $2, $3)
+            `INSERT INTO users (name, email, password,role)
+             VALUES ($1, $2, $3,$4)
              RETURNING id`,
-            [name, email, hashedPassword]
+            [name, email, hashedPassword,role]
         );
 
         res.status(201).json({

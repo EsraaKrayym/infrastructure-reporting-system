@@ -10,8 +10,8 @@ import {
 const router = express.Router();
 
 // Nur Admin darf
-router.get("/", verifyToken, requireRole(["caseworker"]), getAllUsers);
-router.put("/:id/block", verifyToken, requireRole(["caseworker"]), toggleBlockUser);
-router.delete("/:id", verifyToken, requireRole(["caseworker"]), deleteUser);
+router.get("/", verifyToken, requireRole(["admin"]), getAllUsers);
+router.put("/:id/block", verifyToken, requireRole(["admin"]), toggleBlockUser);
+router.delete("/:id", verifyToken, requireRole(["admin"]), deleteUser);
 
 export default router;

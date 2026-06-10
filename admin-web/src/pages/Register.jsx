@@ -74,7 +74,7 @@ export default function Register() {
 
                         <select className="role-select">
 
-                            <option value="sachbearbeiter">
+                            <option value="caseworker">
                                 Sachbearbeiter
                             </option>
 
