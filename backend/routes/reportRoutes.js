@@ -16,15 +16,15 @@ const router = express.Router();
 router.get("/my", verifyToken, requireRole(["citizen"]), getReports);
 
 // Caseworker → alle Reports sehen
-router.get("/", verifyToken, requireRole(["admin"]), getReports);
+router.get("/", verifyToken, requireRole(["admin","caseworker"]), getReports);
 
 // Caseworker → Status ändern
-router.put("/:id/status", verifyToken, requireRole(["admin"]), updateReportStatus);
+router.put("/:id/status", verifyToken, requireRole(["admin","caseworker"]), updateReportStatus);
 
 router.put(
     "/:id/priority",
     verifyToken,
-    requireRole(["admin"]),
+    requireRole(["admin","caseworker"]),
     updatePriority
 );
 router.post(

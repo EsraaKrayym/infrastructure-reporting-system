@@ -68,7 +68,9 @@ export const getReports = async (req, res) => {
             return res.json(result.rows);
         }
 
-        if (req.user.role === "caseworker") {
+        if (
+            req.user.role === "caseworker" ||
+            req.user.role === "admin") {
             const result = await pool.query(
                 "SELECT * FROM reports ORDER BY created_at DESC"
             );
@@ -91,8 +93,10 @@ export const updateReportStatus = async (req, res) => {
         const { id } = req.params;
         const { status } = req.body;
 
-        if (req.user.role !== "caseworker") {
-            return res.status(403).json({ message: "Caseworker access required" });
+        if (
+            req.user.role !== "caseworker" &&
+            req.user.role !== "admin") {
+            return res.status(403).json({ message: "Access required" });
         }
 
         const result = await pool.query(
