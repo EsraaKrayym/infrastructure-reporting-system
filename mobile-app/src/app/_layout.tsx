@@ -6,8 +6,7 @@ export default function RootLayout() {
         <AuthProvider>
             <Stack screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="index" />     {/* Login */}
-                <Stack.Screen name="(tabs)" />    {/* App nach Login */}
-                <Stack.Screen name="create-report" />
+                <Stack.Screen name="(tabs)/map" />    {/* App nach Login */}
             </Stack>
         </AuthProvider>
     );

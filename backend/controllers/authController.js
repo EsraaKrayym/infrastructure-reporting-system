@@ -64,10 +64,10 @@ export const register = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const result = await pool.query(
-            `INSERT INTO users (name, email, password,role)
-             VALUES ($1, $2, $3,$4)
+            `INSERT INTO users (name, email, password,role, blocked)
+             VALUES ($1, $2, $3,$4,$5)
              RETURNING id`,
-            [name, email, hashedPassword,role]
+            [name, email, hashedPassword,"citizen",false]
         );
 
         res.status(201).json({

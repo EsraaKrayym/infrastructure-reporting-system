@@ -27,3 +27,5 @@ export const getReports = async (token: string) => {
     });
     return res.json();
 };
+export const registerUser = (data: any) =>
+    API.post("/auth/register", data);
