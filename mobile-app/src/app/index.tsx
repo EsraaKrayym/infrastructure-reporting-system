@@ -23,19 +23,23 @@ export default function LoginScreen() {
     const [showPassword, setShowPassword] = useState(false);
 
     const handleLogin = async () => {
-
         try {
 
-            const response = await loginUser({
+            const response = await loginUser(
                 email,
                 password
-            });
+            );
 
-            login(response.data.token);
+            console.log(response);
+
+            login(response.token);
 
             router.replace("/(tabs)/map");
 
         } catch (error) {
+
+            console.log(error);
+
             Alert.alert(
                 "Fehler",
                 "Ungültige Anmeldedaten"

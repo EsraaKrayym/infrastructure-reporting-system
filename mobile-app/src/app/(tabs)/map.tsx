@@ -479,7 +479,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   searchButton: {
-    backgroundColor: "#2563eb",
+    backgroundColor: "#5D845CFF",
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 12,
@@ -515,7 +515,7 @@ const styles = StyleSheet.create({
     width: 65,
     height: 65,
     borderRadius: 35,
-    backgroundColor: "#2563eb",
+    backgroundColor: "#5D845CFF",
     justifyContent: "center",
     alignItems: "center",
     elevation: 8,
@@ -559,7 +559,7 @@ const styles = StyleSheet.create({
     alignSelf: "flex-end",
     paddingVertical: 8,
     paddingHorizontal: 14,
-    backgroundColor: "#2563eb",
+    backgroundColor: "#5D845CFF",
     borderRadius: 12,
   },
   previewCloseText: {
@@ -624,7 +624,7 @@ const styles = StyleSheet.create({
 
   cameraBtn: {
     flexDirection: "row",
-    backgroundColor: "#2563eb",
+    backgroundColor: "#5D845CFF",
     padding: 12,
     borderRadius: 18,
     alignItems: "center",
@@ -634,7 +634,7 @@ const styles = StyleSheet.create({
 
   sendBtn: {
     marginTop: 15,
-    backgroundColor: "#1e40af",
+    backgroundColor: "#5D845CFF",
     padding: 15,
     borderRadius: 20,
     alignItems: "center",
