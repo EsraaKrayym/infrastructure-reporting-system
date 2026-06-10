@@ -18,16 +18,17 @@ export default function ReportsMap({ token }) {
     const [reports, setReports] = useState([]);
 
     useEffect(() => {
+        const loadReports = async () => {
+            try {
+                const res = await getReports(token);
+                setReports(res.data);
+            } catch (error) {
+                console.error(error);
+            }
+        };
+
         loadReports();
-    }, [loadReports]);
-    const loadReports = async () => {
-        try {
-            const res = await getReports(token);
-            setReports(res.data);
-        } catch (error) {
-            console.error(error);
-        }
-    };
+    }, [token]);
 
     return (
         <div className="layout">
