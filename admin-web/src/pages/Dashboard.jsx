@@ -11,8 +11,7 @@ export default function Dashboard({ token }) {
     //}, []);
     useEffect(() => {
         loadReports();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [loadReports]);
     const loadReports = async () => {
         try {
             const res = await getReports(token);
