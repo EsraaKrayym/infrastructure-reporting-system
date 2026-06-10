@@ -27,5 +27,14 @@ export const getReports = async (token: string) => {
     });
     return res.json();
 };
-export const registerUser = (data: any) =>
-    API.post("/auth/register", data);
+export const registerUser = async (data: any) => {
+    const res = await fetch(`${API_URL}/auth/register`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(data)
+    });
+
+    return res.json();
+};
