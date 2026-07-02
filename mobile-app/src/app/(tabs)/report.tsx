@@ -4,7 +4,9 @@ import {
   Text,
   FlatList,
   StyleSheet,
-  ActivityIndicator
+  ActivityIndicator,
+  Modal,
+  TouchableOpacity,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 
@@ -17,6 +19,7 @@ export default function ReportsScreen() {
 
   const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedReport, setSelectedReport] = useState<any>(null);
 
   useFocusEffect(
       useCallback(() => {
@@ -82,6 +85,15 @@ export default function ReportsScreen() {
     }
   };
 
+  const formatDate = (value: string) => {
+    if (!value) return "";
+    return new Date(value).toLocaleDateString("de-DE", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
+
   if (loading) {
     return (
         <View style={styles.loading}>
@@ -109,7 +121,7 @@ export default function ReportsScreen() {
       <View style={styles.container}>
 
         <Text style={styles.header}>
-          🔔 Meine Meldungen
+           Meldungsübersicht
         </Text>
 
         <View style={styles.statsRow}>
@@ -160,52 +172,79 @@ export default function ReportsScreen() {
               </Text>
             }
             renderItem={({ item }) => (
-
-                <View
-                    style={[
-                      styles.reportCard,
-                      {
-                        borderLeftColor:
-                            getStatusColor(
-                                item.status
-                            )
-                      }
-                    ]}
+                <TouchableOpacity
+                    activeOpacity={0.85}
+                    onPress={() => setSelectedReport(item)}
                 >
-
-                  <Text style={styles.reportTitle}>
-                    {item.title ||
-                        item.category ||
-                        "Meldung"}
-                  </Text>
-
-                  <Text style={styles.reportDate}>
-                    {item.created_at
-                        ? new Date(
-                            item.created_at
-                        ).toLocaleDateString()
-                        : ""}
-                  </Text>
-
-                  <Text
+                  <View
                       style={[
-                        styles.status,
+                        styles.reportCard,
                         {
-                          color:
-                              getStatusColor(
-                                  item.status
-                              )
+                          borderLeftColor: getStatusColor(item.status)
                         }
                       ]}
                   >
-                    {getStatusIcon(item.status)}
-                    {" "}
-                    {item.status}
-                  </Text>
 
-                </View>
+                    <View style={styles.reportTopRow}>
+                      <Text style={styles.reportTitle}>
+                        {item.status || "Neu"} #{item.id}
+                      </Text>
+
+                      <Text style={styles.reportDate}>
+                        {formatDate(item.created_at)}
+                      </Text>
+                    </View>
+
+                    <Text style={styles.reportSubtitle} numberOfLines={1}>
+                      {item.title || item.category || "Meldung"}
+                    </Text>
+
+                  </View>
+                </TouchableOpacity>
             )}
         />
+
+        <Modal
+            visible={!!selectedReport}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setSelectedReport(null)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalBadge}>
+                {selectedReport?.status || "Neu"} #{selectedReport?.id}
+              </Text>
+
+              <Text style={styles.modalTitle}>
+                {selectedReport?.title || selectedReport?.category || "Meldung"}
+              </Text>
+
+              <Text style={styles.modalLine}>
+                📅 {formatDate(selectedReport?.created_at)}
+              </Text>
+              <Text style={styles.modalLine}>
+                🏷 Kategorie: {selectedReport?.category || "-"}
+              </Text>
+              <Text style={styles.modalLine}>
+                ⚡ Priorität: {selectedReport?.priority || "-"}
+              </Text>
+              <Text style={styles.modalLine}>
+                📍 Adresse: {selectedReport?.address || "-"}
+              </Text>
+              <Text style={styles.modalDescription}>
+                {selectedReport?.description || "Keine Beschreibung vorhanden."}
+              </Text>
+
+              <TouchableOpacity
+                  style={styles.modalCloseButton}
+                  onPress={() => setSelectedReport(null)}
+              >
+                <Text style={styles.modalCloseText}>Schließen</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
 
       </View>
   );
@@ -275,6 +314,13 @@ const styles = StyleSheet.create({
     elevation: 3
   },
 
+  reportTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+
   reportTitle: {
     fontSize: 18,
     fontWeight: "bold",
@@ -282,8 +328,14 @@ const styles = StyleSheet.create({
   },
 
   reportDate: {
-    marginTop: 5,
+    marginTop: 2,
     color: "#666"
+  },
+
+  reportSubtitle: {
+    marginTop: 6,
+    color: "#374151",
+    fontSize: 14,
   },
 
   status: {
@@ -296,5 +348,66 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 50,
     color: "#666"
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+
+  modalCard: {
+    width: "100%",
+    maxWidth: 360,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 18,
+    elevation: 8,
+  },
+
+  modalBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: "#EAF2EC",
+    color: "#2F4630",
+    fontWeight: "800",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    marginBottom: 10,
+  },
+
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#111827",
+    marginBottom: 12,
+  },
+
+  modalLine: {
+    fontSize: 14,
+    color: "#374151",
+    marginBottom: 6,
+  },
+
+  modalDescription: {
+    marginTop: 10,
+    color: "#111827",
+    lineHeight: 20,
+  },
+
+  modalCloseButton: {
+    marginTop: 16,
+    alignSelf: "flex-end",
+    backgroundColor: "#5D845C",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+  },
+
+  modalCloseText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
   }
 });

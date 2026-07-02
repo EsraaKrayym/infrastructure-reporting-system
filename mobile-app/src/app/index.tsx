@@ -45,7 +45,7 @@ export default function LoginScreen() {
                 return;
             }
 
-            await login(token);
+            await login(token, response?.user);
 
             router.replace("/(tabs)/map");
 
