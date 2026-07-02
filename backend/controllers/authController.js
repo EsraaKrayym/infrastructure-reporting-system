@@ -6,10 +6,36 @@ export const login = async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        const result = await pool.query(
+        const defaultAdminEmail = process.env.DEFAULT_ADMIN_EMAIL || "admin@cityreport.de";
+        const defaultAdminPassword = process.env.DEFAULT_ADMIN_PASSWORD || "123456";
+        const defaultAdminName = process.env.DEFAULT_ADMIN_NAME || "Administrator";
+
+        let result = await pool.query(
             "SELECT * FROM users WHERE email = $1",
             [email]
         );
+
+        // Falls der Standard-Admin fehlt, automatisch erstellen (Prototype-Stabilität)
+        if (result.rows.length === 0 && email === defaultAdminEmail) {
+            const hashedDefaultPassword = await bcrypt.hash(defaultAdminPassword, 10);
+
+            await pool.query(
+                `INSERT INTO users (name, email, password, role, blocked)
+                 VALUES ($1, $2, $3, 'admin', false)
+                 ON CONFLICT (email)
+                 DO UPDATE SET
+                    name = EXCLUDED.name,
+                    password = EXCLUDED.password,
+                    role = 'admin',
+                    blocked = false`,
+                [defaultAdminName, defaultAdminEmail, hashedDefaultPassword]
+            );
+
+            result = await pool.query(
+                "SELECT * FROM users WHERE email = $1",
+                [email]
+            );
+        }
 
         if (result.rows.length === 0) {
             return res.status(401).json({ message: "Invalid credentials" });
@@ -21,7 +47,23 @@ export const login = async (req, res) => {
             return res.status(403).json({ message: "Account blocked" });
         }
 
-        const isMatch = await bcrypt.compare(password, user.password);
+        let isMatch = false;
+
+        // Normalfall: bcrypt hash
+        if (typeof user.password === "string" && user.password.startsWith("$2")) {
+            isMatch = await bcrypt.compare(password, user.password);
+        } else {
+            // Legacy-Fall: Klartext-Passwort in DB -> einmalig migrieren
+            isMatch = password === user.password;
+
+            if (isMatch) {
+                const newHash = await bcrypt.hash(password, 10);
+                await pool.query(
+                    "UPDATE users SET password = $1 WHERE id = $2",
+                    [newHash, user.id]
+                );
+            }
+        }
 
         if (!isMatch) {
             return res.status(401).json({ message: "Invalid credentials" });
