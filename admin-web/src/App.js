@@ -9,17 +9,6 @@ import ForgotPassword from "./pages/ForgotPassword";
 import Categories from "./pages/Categories";
 import Notifications from "./pages/Notifications";
 
-
-function ProtectedRoute({ children }) {
-  const token = localStorage.getItem("token");
-
-  if (!token) {
-    return <Navigate to="/login" />;
-  }
-
-  return children;
-}
-
 function StaffRoute({ children }) {
   const token = localStorage.getItem("token");
   const user = JSON.parse(localStorage.getItem("user") || "null");
