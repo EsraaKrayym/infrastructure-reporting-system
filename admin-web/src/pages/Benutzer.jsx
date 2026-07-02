@@ -120,7 +120,12 @@ export default function Benutzer() {
             setForm({ firstName: "", lastName: "", email: "", password: "", role: "caseworker" });
             await loadUsers();
         } catch (err) {
-            alert(err?.response?.data?.message || "Erstellen fehlgeschlagen");
+            const backendMessage =
+                err?.response?.data?.message ||
+                (typeof err?.response?.data === "string" ? err.response.data : "") ||
+                err?.message;
+
+            alert(backendMessage || "Erstellen fehlgeschlagen");
         } finally {
             setSaving(false);
         }

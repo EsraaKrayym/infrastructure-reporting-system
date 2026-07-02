@@ -6,6 +6,7 @@ import ReportsMap from "./pages/ReportsMap";
 import Reports from "./pages/Reports";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
+import Categories from "./pages/Categories";
 
 
 function ProtectedRoute({ children }) {
@@ -42,6 +43,7 @@ function App() {
             />
             <Route path="/map" element={<ReportsMap />} />
             <Route path="/reports" element={<Reports />} />
+            <Route path="/categories" element={<Categories />} />
           {/* Default Route */}
           <Route path="*" element={<Navigate to="/login" />} />
             <Route
