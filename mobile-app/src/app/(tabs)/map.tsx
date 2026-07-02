@@ -8,6 +8,7 @@ import {
   TextInput,
   Platform,
   Image,
+  ScrollView,
 } from "react-native";
 import * as Location from "expo-location";
 import { createReport, getReports } from "@/services/api";
@@ -65,6 +66,14 @@ export default function MapScreen() {
     setReports(Array.isArray(data) ? data : data.reports || []);
   };
 
+  const openCreateReportModal = () => {
+    setDescription("");
+    setPriority("medium");
+    setPhoto(null);
+    setShowHint(false);
+    setShowModal(true);
+  };
+
   const sendReport = async () => {
     if (!userLocation) return;
 
@@ -99,6 +108,9 @@ export default function MapScreen() {
         alert("Report erfolgreich gesendet");
       }
 
+      setDescription("");
+      setPriority("medium");
+      setPhoto(null);
       setShowModal(false);
       await loadReports();
     } catch (error: any) {
@@ -310,10 +322,7 @@ export default function MapScreen() {
 
         <TouchableOpacity
             style={styles.fab}
-            onPress={() => {
-              setShowHint(false);
-              setShowModal(true);
-            }}
+            onPress={openCreateReportModal}
         >
           <Text style={styles.fabText}>+</Text>
         </TouchableOpacity>
@@ -341,78 +350,83 @@ export default function MapScreen() {
                   style={styles.bottomSheet}
                   onPress={(e) => (e.stopPropagation ? e.stopPropagation() : undefined)}
               >
-                <View style={styles.sheetHeader}>
-                  <TouchableOpacity onPress={() => setShowModal(false)}>
-                    <MaterialIcons name="close" size={26} color="#333" />
+                <ScrollView
+                    contentContainerStyle={styles.bottomSheetContent}
+                    showsVerticalScrollIndicator={false}
+                >
+                  <View style={styles.sheetHeader}>
+                    <TouchableOpacity onPress={() => setShowModal(false)}>
+                      <MaterialIcons name="close" size={26} color="#333" />
+                    </TouchableOpacity>
+
+                    <Text style={styles.sheetTitle}>Schaden melden</Text>
+                    <View style={{ width: 26 }} />
+                  </View>
+
+                  <Text style={styles.label}>Priorität</Text>
+                  <View style={styles.priorityRow}>
+                    {["low", "medium", "high"].map((p) => (
+                        <TouchableOpacity
+                            key={p}
+                            onPress={() => setPriority(p)}
+                            style={[
+                              styles.priorityBtn,
+                              {
+                                backgroundColor: p === "high" ? "#dc2626" : p === "medium" ? "#f97316" : "#16a34a",
+                                opacity: priority === p ? 1 : 0.4,
+                              },
+                            ]}
+                        >
+                          <Text style={styles.priorityText}>
+                            {p === "low" ? "Niedrig" : p === "medium" ? "Mittel" : "Hoch"}
+                          </Text>
+                        </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  <Text style={styles.label}>Ort</Text>
+                  <TextInput
+                      value={address}
+                      onChangeText={setAddress}
+                      style={styles.input}
+                      placeholder="Adresse wird automatisch gesetzt"
+                  />
+
+                  <Text style={styles.label}>Beschreibung</Text>
+                  <TextInput
+                      value={description}
+                      onChangeText={setDescription}
+                      style={[styles.input, { height: 90 }]}
+                      multiline
+                      placeholder="Weitere Informationen..."
+                  />
+
+                  <TouchableOpacity style={styles.cameraBtn} onPress={openCamera}>
+                    <MaterialIcons name="camera-alt" size={20} color="white" />
+                    <Text style={{ color: "white", marginLeft: 8 }}>Foto aufnehmen</Text>
                   </TouchableOpacity>
 
-                  <Text style={styles.sheetTitle}>Schaden melden</Text>
-                  <View style={{ width: 26 }} />
-                </View>
+                  {photo && (
+                      <View style={styles.photoPreviewCard}>
+                        <View style={styles.photoPreviewHeader}>
+                          <Text style={styles.photoPreviewTitle}>Foto bereit für Upload ✅</Text>
+                          <TouchableOpacity onPress={() => setPhoto(null)}>
+                            <Text style={styles.photoRemoveText}>Entfernen</Text>
+                          </TouchableOpacity>
+                        </View>
 
-                <Text style={styles.label}>Priorität</Text>
-                <View style={styles.priorityRow}>
-                  {["low", "medium", "high"].map((p) => (
-                      <TouchableOpacity
-                          key={p}
-                          onPress={() => setPriority(p)}
-                          style={[
-                            styles.priorityBtn,
-                            {
-                              backgroundColor: p === "high" ? "#dc2626" : p === "medium" ? "#f97316" : "#16a34a",
-                              opacity: priority === p ? 1 : 0.4,
-                            },
-                          ]}
-                      >
-                        <Text style={styles.priorityText}>
-                          {p === "low" ? "Niedrig" : p === "medium" ? "Mittel" : "Hoch"}
-                        </Text>
-                      </TouchableOpacity>
-                  ))}
-                </View>
-
-                <Text style={styles.label}>Ort</Text>
-                <TextInput
-                    value={address}
-                    onChangeText={setAddress}
-                    style={styles.input}
-                    placeholder="Adresse wird automatisch gesetzt"
-                />
-
-                <Text style={styles.label}>Beschreibung</Text>
-                <TextInput
-                    value={description}
-                    onChangeText={setDescription}
-                    style={[styles.input, { height: 90 }]}
-                    multiline
-                    placeholder="Weitere Informationen..."
-                />
-
-                <TouchableOpacity style={styles.cameraBtn} onPress={openCamera}>
-                  <MaterialIcons name="camera-alt" size={20} color="white" />
-                  <Text style={{ color: "white", marginLeft: 8 }}>Foto aufnehmen</Text>
-                </TouchableOpacity>
-
-                {photo && (
-                    <View style={styles.photoPreviewCard}>
-                      <View style={styles.photoPreviewHeader}>
-                        <Text style={styles.photoPreviewTitle}>Foto bereit für Upload ✅</Text>
-                        <TouchableOpacity onPress={() => setPhoto(null)}>
-                          <Text style={styles.photoRemoveText}>Entfernen</Text>
-                        </TouchableOpacity>
+                        <Image
+                            source={{ uri: photo }}
+                            style={styles.photoPreviewImage}
+                            resizeMode="cover"
+                        />
                       </View>
+                  )}
 
-                      <Image
-                          source={{ uri: photo }}
-                          style={styles.photoPreviewImage}
-                          resizeMode="cover"
-                      />
-                    </View>
-                )}
-
-                <TouchableOpacity style={styles.sendBtn} onPress={sendReport}>
-                  <Text style={styles.sendText}>Report senden</Text>
-                </TouchableOpacity>
+                  <TouchableOpacity style={styles.sendBtn} onPress={sendReport}>
+                    <Text style={styles.sendText}>Report senden</Text>
+                  </TouchableOpacity>
+                </ScrollView>
               </Pressable>
             </Pressable>
         )}
@@ -596,10 +610,15 @@ const styles = StyleSheet.create({
   },
   bottomSheet: {
     backgroundColor: "#ffffff",
-    padding: 20,
+    paddingTop: 20,
     borderTopLeftRadius: 25,
     borderTopRightRadius: 25,
     minHeight: 480,
+    maxHeight: "82%",
+  },
+  bottomSheetContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 24,
   },
   sheetHeader: {
     flexDirection: "row",
