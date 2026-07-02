@@ -129,6 +129,17 @@ export default function Dashboard({ token }) {
 
                     {reports.map((r) => (
 
+                        (() => {
+                            const isDefaultMobileTitle =
+                                !r.title ||
+                                String(r.title).trim().toLowerCase() === "meldung vom mobilgerät";
+
+                            const displayTitle = isDefaultMobileTitle
+                                ? `Neu #${r.id ?? "--"}`
+                                : r.title;
+
+                            return (
+
                         <div
                             key={r.id}
                             className="reportCard"
@@ -136,7 +147,7 @@ export default function Dashboard({ token }) {
 
                             <div>
 
-                                <h4>{r.title}</h4>
+                                <h4>{displayTitle}</h4>
 
                                 <p>{r.description}</p>
 
@@ -155,6 +166,9 @@ export default function Dashboard({ token }) {
                             </div>
 
                         </div>
+
+                            );
+                        })()
 
                     ))}
 
