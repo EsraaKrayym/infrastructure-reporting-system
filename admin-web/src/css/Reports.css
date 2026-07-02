@@ -110,13 +110,6 @@
     font-size: 14px;
 }
 
-.report-description {
-    margin: 18px 24px 0;
-    font-size: 15px;
-    color: #334155;
-    line-height: 1.7;
-}
-
 .report-meta-card {
     margin: 16px 24px 24px;
     background: #f8faf9;
@@ -136,6 +129,12 @@
     border-top: 1px solid #e4ece7;
 }
 
+.report-meta-row-stack {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+}
+
 .report-meta-label {
     color: #64748b;
     font-size: 13px;
@@ -147,6 +146,12 @@
     font-size: 14px;
     font-weight: 700;
     text-align: right;
+}
+
+.report-meta-value-stack {
+    text-align: left;
+    font-weight: 500;
+    line-height: 1.6;
 }
 
 .report-details {

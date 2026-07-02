@@ -97,7 +97,7 @@ export default function Reports() {
         const isDefaultMobileTitle = !rawTitle || rawTitle === "meldung vom mobilgerät";
 
         if (isDefaultMobileTitle) {
-            return `Neu #${report?.id ?? "--"}`;
+            return "Meldung";
         }
 
         return report.title;
@@ -216,10 +216,17 @@ export default function Reports() {
                     {reports.map((report) => {
                         const photoUrl = resolvePhotoUrl(report.photo);
                         const imageBroken = !!brokenImages[report.id];
+                        const description =
+                            (report.description || "").trim() ||
+                            "Keine Beschreibung verfügbar.";
                         const address =
                             (report.address || "").trim() ||
                             "Keine Adresse angegeben";
                         const reporterId = report.user_id ?? "Unbekannt";
+                        const createdAt = report.created_at || report.createdAt;
+                        const createdDateTime = createdAt
+                            ? new Date(createdAt).toLocaleString("de-DE")
+                            : "Unbekannt";
 
                         return (
                             <div key={report.id} className="report-card">
@@ -267,12 +274,12 @@ export default function Reports() {
                                     </div>
                                 )}
 
-                                <p className="report-description">
-                                    {report.description ||
-                                        "Keine Beschreibung verfügbar."}
-                                </p>
-
                                 <div className="report-meta-card">
+                                    <div className="report-meta-row report-meta-row-stack">
+                                        <span className="report-meta-label">Beschreibung</span>
+                                        <span className="report-meta-value report-meta-value-stack">{description}</span>
+                                    </div>
+
                                     <div className="report-meta-row">
                                         <span className="report-meta-label">Adresse</span>
                                         <span className="report-meta-value">{address}</span>
@@ -281,6 +288,11 @@ export default function Reports() {
                                     <div className="report-meta-row">
                                         <span className="report-meta-label">Benutzer-ID</span>
                                         <span className="report-meta-value">#{reporterId}</span>
+                                    </div>
+
+                                    <div className="report-meta-row">
+                                        <span className="report-meta-label">Datum & Uhrzeit</span>
+                                        <span className="report-meta-value">{createdDateTime}</span>
                                     </div>
                                 </div>
 
