@@ -160,8 +160,8 @@ export default function Dashboard({ token }) {
                             </div>
 
                             <div>
-                                <span className="status">
-                                    {r.status}
+                                <span className="report-status">
+                                    {r.status || "Neu"}
                                 </span>
                             </div>
 

@@ -245,8 +245,15 @@
    STATUS
 ====================== */
 
-.status {
-    font-weight: bold;
-    color: #5D845C;
-    font-size: 15px;
+.report-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 70px;
+    padding: 8px 14px;
+    border-radius: 10px;
+    background: #5D845C;
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 14px;
 }

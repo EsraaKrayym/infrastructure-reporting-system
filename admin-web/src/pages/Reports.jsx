@@ -10,6 +10,7 @@ export default function Reports() {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(true);
     const [lastUpdated, setLastUpdated] = useState(null);
+    const [brokenImages, setBrokenImages] = useState({});
 
     const loadReports = async () => {
         try {
@@ -89,6 +90,35 @@ export default function Reports() {
             default:
                 return status || "Unbekannt";
         }
+    };
+
+    const getDisplayTitle = (report) => {
+        const rawTitle = (report?.title || "").trim().toLowerCase();
+        const isDefaultMobileTitle = !rawTitle || rawTitle === "meldung vom mobilgerät";
+
+        if (isDefaultMobileTitle) {
+            return `Neu #${report?.id ?? "--"}`;
+        }
+
+        return report.title;
+    };
+
+    const resolvePhotoUrl = (photo) => {
+        if (!photo) return null;
+
+        if (/^https?:\/\//i.test(photo)) {
+            return photo;
+        }
+
+        if (photo.startsWith("/uploads/")) {
+            return `${uploadBaseUrl}${photo}`;
+        }
+
+        if (photo.startsWith("uploads/")) {
+            return `${uploadBaseUrl}/${photo}`;
+        }
+
+        return `${uploadBaseUrl}/uploads/${photo}`;
     };
 
     return (
@@ -184,15 +214,8 @@ export default function Reports() {
 
                 <div className="reports-grid">
                     {reports.map((report) => {
-                        const createdAt =
-                            report.created_at || report.createdAt;
-
-                        const createdDate = createdAt
-                            ? new Date(createdAt).toLocaleDateString("de-DE")
-                            : "Unbekannt";
-
-                        const mapUrl =
-                            `https://www.google.com/maps/search/?api=1&query=${report.latitude},${report.longitude}`;
+                        const photoUrl = resolvePhotoUrl(report.photo);
+                        const imageBroken = !!brokenImages[report.id];
 
                         return (
                             <div key={report.id} className="report-card">
@@ -214,7 +237,7 @@ export default function Reports() {
 
                                 <div className="report-title-row">
                                     <h3>
-                                        {report.title || "Unbenannte Meldung"}
+                                        {getDisplayTitle(report)}
                                     </h3>
 
                                     <span className="status-label">
@@ -222,15 +245,17 @@ export default function Reports() {
                                     </span>
                                 </div>
 
-                                <div className="report-category">
-                                    {report.category || "Allgemein"}
-                                </div>
-
-                                {report.photo ? (
+                                {photoUrl && !imageBroken ? (
                                     <img
-                                        src={`${uploadBaseUrl}/uploads/${report.photo}`}
+                                        src={photoUrl}
                                         alt="report"
                                         className="report-image"
+                                        onError={() =>
+                                            setBrokenImages((prev) => ({
+                                                ...prev,
+                                                [report.id]: true
+                                            }))
+                                        }
                                     />
                                 ) : (
                                     <div className="report-image placeholder">
@@ -242,69 +267,6 @@ export default function Reports() {
                                     {report.description ||
                                         "Keine Beschreibung verfügbar."}
                                 </p>
-
-                                <div className="report-contact-card">
-                                    <div>
-                                        <div className="contact-name">
-                                            Reporter #{report.user_id || "unbekannt"}
-                                        </div>
-
-                                        <div className="contact-subtitle">
-                                            Admin User
-                                        </div>
-                                    </div>
-
-                                    <div className="contact-phone">
-                                        +49 170 0000000
-                                    </div>
-                                </div>
-
-                                <div className="report-details report-details-grid">
-                                    <div>
-                                        <strong>Lat:</strong>{" "}
-                                        {report.latitude ?? "-"}
-                                    </div>
-
-                                    <div>
-                                        <strong>Lng:</strong>{" "}
-                                        {report.longitude ?? "-"}
-                                    </div>
-
-                                    <a
-                                        className="map-link"
-                                        href={mapUrl}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                    >
-                                        Auf Google Maps ansehen
-                                    </a>
-                                </div>
-
-                                <div className="report-actions report-actions-large">
-                                    <button className="btn status">
-                                        Status
-                                    </button>
-
-                                    <button className="btn edit">
-                                        Bearbeiten
-                                    </button>
-
-                                    <button className="btn delete">
-                                        Löschen
-                                    </button>
-
-                                    <button className="btn history">
-                                        Verlauf
-                                    </button>
-
-                                    <button className="btn share">
-                                        WhatsApp
-                                    </button>
-                                </div>
-
-                                <div className="report-footer">
-                                    <span>{createdDate}</span>
-                                </div>
 
                             </div>
                         );
