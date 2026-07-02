@@ -12,7 +12,7 @@ export default function TabsLayout() {
             />
 
             <Tabs.Screen
-                name="reports"
+                name="report"
                 options={{
                     title: "Meldungen"
                 }}

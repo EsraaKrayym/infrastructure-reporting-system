@@ -7,6 +7,7 @@ import {
   Pressable,
   TextInput,
   Platform,
+  Image,
 } from "react-native";
 import * as Location from "expo-location";
 import { createReport, getReports } from "@/services/api";
@@ -392,6 +393,23 @@ export default function MapScreen() {
                   <Text style={{ color: "white", marginLeft: 8 }}>Foto aufnehmen</Text>
                 </TouchableOpacity>
 
+                {photo && (
+                    <View style={styles.photoPreviewCard}>
+                      <View style={styles.photoPreviewHeader}>
+                        <Text style={styles.photoPreviewTitle}>Foto bereit für Upload ✅</Text>
+                        <TouchableOpacity onPress={() => setPhoto(null)}>
+                          <Text style={styles.photoRemoveText}>Entfernen</Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      <Image
+                          source={{ uri: photo }}
+                          style={styles.photoPreviewImage}
+                          resizeMode="cover"
+                      />
+                    </View>
+                )}
+
                 <TouchableOpacity style={styles.sendBtn} onPress={sendReport}>
                   <Text style={styles.sendText}>Report senden</Text>
                 </TouchableOpacity>
@@ -630,6 +648,35 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginTop: 10,
+  },
+
+  photoPreviewCard: {
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: "#d1d5db",
+    borderRadius: 14,
+    padding: 10,
+    backgroundColor: "#f8fafc",
+  },
+  photoPreviewHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  photoPreviewTitle: {
+    fontWeight: "700",
+    color: "#111827",
+  },
+  photoRemoveText: {
+    color: "#dc2626",
+    fontWeight: "700",
+  },
+  photoPreviewImage: {
+    width: "100%",
+    height: 180,
+    borderRadius: 12,
+    backgroundColor: "#e5e7eb",
   },
 
   sendBtn: {

@@ -1,4 +1,4 @@
-import { useEffect, useState, useContext } from "react";
+import { useCallback, useState, useContext } from "react";
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ActivityIndicator
 } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 
 import { AuthContext } from "@/context/AuthContext";
 import { getReports } from "@/services/api";
@@ -17,13 +18,19 @@ export default function ReportsScreen() {
   const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadReports();
-  }, []);
+  useFocusEffect(
+      useCallback(() => {
+        loadReports();
+      }, [token])
+  );
 
   const loadReports = async () => {
 
     try {
+      if (!token) {
+        setReports([]);
+        return;
+      }
 
       const data = await getReports(token);
 
