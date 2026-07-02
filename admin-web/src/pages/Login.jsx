@@ -23,8 +23,11 @@ export default function Login() {
             localStorage.setItem("user", JSON.stringify(res.data.user));
 
             navigate("/dashboard");
-        } catch {
-            alert("Ungültige Anmeldedaten");
+        } catch (error) {
+            alert(
+                error?.response?.data?.message ||
+                "Ungültige Anmeldedaten"
+            );
         } finally {
             setLoading(false);
         }
