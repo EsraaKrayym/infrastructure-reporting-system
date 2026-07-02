@@ -4,13 +4,15 @@ import { requireRole } from "../middleware/roleMiddleware.js";
 import {
     getAllUsers,
     toggleBlockUser,
-    deleteUser
+    deleteUser,
+    createCaseworker
 } from "../controllers/userController.js";
 
 const router = express.Router();
 
 // Nur Admin darf
 router.get("/", verifyToken, requireRole(["admin"]), getAllUsers);
+router.post("/", verifyToken, requireRole(["admin"]), createCaseworker);
 router.put("/:id/block", verifyToken, requireRole(["admin"]), toggleBlockUser);
 router.delete("/:id", verifyToken, requireRole(["admin"]), deleteUser);
 

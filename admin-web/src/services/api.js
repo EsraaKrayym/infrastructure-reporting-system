@@ -22,4 +22,17 @@ export const getReports = () =>
     API.get("/reports");
 export const register = (data) =>
     API.post("/auth/register", data);
+
+export const getUsers = () =>
+    API.get("/users");
+
+export const createCaseworker = (data) =>
+    API.post("/users", data);
+
+export const toggleBlockUser = (id) =>
+    API.put(`/users/${id}/block`);
+
+export const deleteUser = (id) =>
+    API.delete(`/users/${id}`);
+
 export default API;
