@@ -216,6 +216,10 @@ export default function Reports() {
                     {reports.map((report) => {
                         const photoUrl = resolvePhotoUrl(report.photo);
                         const imageBroken = !!brokenImages[report.id];
+                        const address =
+                            (report.address || "").trim() ||
+                            "Keine Adresse angegeben";
+                        const reporterId = report.user_id ?? "Unbekannt";
 
                         return (
                             <div key={report.id} className="report-card">
@@ -267,6 +271,18 @@ export default function Reports() {
                                     {report.description ||
                                         "Keine Beschreibung verfügbar."}
                                 </p>
+
+                                <div className="report-meta-card">
+                                    <div className="report-meta-row">
+                                        <span className="report-meta-label">Adresse</span>
+                                        <span className="report-meta-value">{address}</span>
+                                    </div>
+
+                                    <div className="report-meta-row">
+                                        <span className="report-meta-label">Benutzer-ID</span>
+                                        <span className="report-meta-value">#{reporterId}</span>
+                                    </div>
+                                </div>
 
                             </div>
                         );

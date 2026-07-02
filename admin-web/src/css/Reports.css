@@ -117,6 +117,38 @@
     line-height: 1.7;
 }
 
+.report-meta-card {
+    margin: 16px 24px 24px;
+    background: #f8faf9;
+    border: 1px solid #d9e4dc;
+    border-radius: 16px;
+    padding: 12px 14px;
+}
+
+.report-meta-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 8px 0;
+}
+
+.report-meta-row + .report-meta-row {
+    border-top: 1px solid #e4ece7;
+}
+
+.report-meta-label {
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.report-meta-value {
+    color: #1f2937;
+    font-size: 14px;
+    font-weight: 700;
+    text-align: right;
+}
+
 .report-details {
     margin-top: 15px;
     font-size: 13px;
