@@ -4,9 +4,27 @@ import bcrypt from "bcryptjs";
 // Alle User holen (Admin)
 export const getAllUsers = async (req, res) => {
     try {
-        const result = await pool.query(
-            "SELECT id, name, email, role, blocked, created_at FROM users ORDER BY created_at DESC, id DESC"
-        );
+        let result;
+
+        try {
+            result = await pool.query(
+                "SELECT id, name, email, role, blocked, created_at FROM users ORDER BY created_at DESC, id DESC"
+            );
+        } catch (queryErr) {
+            const isMissingCreatedAt =
+                queryErr?.code === "42703" &&
+                String(queryErr?.message || "").toLowerCase().includes("created_at");
+
+            if (!isMissingCreatedAt) {
+                throw queryErr;
+            }
+
+            // Fallback für ältere Datenbanken ohne created_at-Spalte
+            result = await pool.query(
+                "SELECT id, name, email, role, blocked, NULL::timestamp AS created_at FROM users ORDER BY id DESC"
+            );
+        }
+
         res.json(result.rows);
     } catch (err) {
         res.status(500).json({ message: err.message });
