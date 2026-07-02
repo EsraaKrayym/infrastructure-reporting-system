@@ -32,22 +32,30 @@ export default function LoginScreen() {
 
             console.log(response);
 
-            if (!response || !response.token) {
-                Alert.alert("Fehler", "Token nicht erhalten. Bitte versuchen Sie es erneut.");
+            const token =
+                response?.token ||
+                response?.accessToken ||
+                response?.jwt;
+
+            if (!token) {
+                Alert.alert(
+                    "Fehler",
+                    response?.message || "Token nicht erhalten. Bitte versuchen Sie es erneut."
+                );
                 return;
             }
 
-            login(response.token);
+            await login(token);
 
             router.replace("/(tabs)/map");
 
-        } catch (error) {
+        } catch (error: any) {
 
             console.log(error);
 
             Alert.alert(
                 "Fehler",
-                "Ungültige Anmeldedaten"
+                error?.message || "Ungültige Anmeldedaten"
             );
         }
     };

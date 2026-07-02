@@ -6,7 +6,13 @@ export const loginUser = async (email: string, password: string) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
     });
-    return res.json();
+    const data = await res.json();
+
+    if (!res.ok) {
+        throw new Error(data?.message || "Login fehlgeschlagen");
+    }
+
+    return data;
 };
 
 export const createReport = async (token: string, data: any) => {
