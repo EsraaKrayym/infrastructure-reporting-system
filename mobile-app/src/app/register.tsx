@@ -31,7 +31,7 @@ export default function RegisterScreen() {
 
             Alert.alert(
                 "Erfolg",
-                "Konto erfolgreich erstellt"
+                "Konto erfolgreich erstellt! Sie können sich jetzt anmelden."
             );
 
             router.replace("/");

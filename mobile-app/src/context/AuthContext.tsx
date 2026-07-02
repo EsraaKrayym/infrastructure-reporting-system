@@ -15,6 +15,10 @@ export const AuthProvider = ({ children }: any) => {
     }, []);
 
     const login = async (newToken: string) => {
+        if (!newToken) {
+            console.error("Login called with undefined token");
+            return;
+        }
         setToken(newToken);
         await AsyncStorage.setItem("token", newToken);
     };

@@ -32,6 +32,11 @@ export default function LoginScreen() {
 
             console.log(response);
 
+            if (!response || !response.token) {
+                Alert.alert("Fehler", "Token nicht erhalten. Bitte versuchen Sie es erneut.");
+                return;
+            }
+
             login(response.token);
 
             router.replace("/(tabs)/map");
