@@ -17,7 +17,7 @@
 
 .sidebar {
 
-    background: #1e2d63;
+    background: #2F4630;
     color: white;
 
     display: flex;
@@ -62,8 +62,8 @@
 }
 
 .menu-item.active {
-    background: #f4c84d;
-    color: #1e2d63;
+    background: #EAF2EC;
+    color: #2F4630;
     font-weight: 700;
 }
 
@@ -82,8 +82,8 @@
 
     border-radius: 50%;
 
-    background: #f4c84d;
-    color: #1e2d63;
+    background: #5D845C;
+    color: #ffffff;
 
     display: flex;
     justify-content: center;
@@ -98,7 +98,7 @@
 }
 
 .admin-box p {
-    color: #cbd5e1;
+    color: #d6e5d9;
     font-size: 14px;
 }
 
@@ -247,6 +247,6 @@
 
 .status {
     font-weight: bold;
-    color: #1e2d63;
+    color: #5D845C;
     font-size: 15px;
 }

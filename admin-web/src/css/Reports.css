@@ -38,8 +38,8 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    background: #eef2ff;
-    color: #3730a3;
+    background: #eaf2ec;
+    color: #2F4630;
     padding: 10px 14px;
     border-radius: 18px;
     font-weight: 700;
@@ -72,8 +72,8 @@
 }
 
 .status-label {
-    background: #e0f2fe;
-    color: #0369a1;
+    background: #dcfce7;
+    color: #166534;
     padding: 8px 14px;
     border-radius: 999px;
     font-size: 12px;
@@ -86,8 +86,8 @@
     margin: 0 24px 18px;
     padding: 8px 14px;
     border-radius: 999px;
-    background: #eef2ff;
-    color: #1d4ed8;
+    background: #eaf2ec;
+    color: #2F4630;
     font-size: 12px;
     font-weight: 700;
 }
@@ -152,7 +152,7 @@
 .contact-phone {
     font-size: 14px;
     font-weight: 700;
-    color: #2563eb;
+    color: #5D845C;
 }
 
 .report-details-grid {
@@ -166,7 +166,7 @@
 
 .map-link {
     grid-column: span 2;
-    color: #2563eb;
+    color: #5D845C;
     text-decoration: none;
     font-weight: 700;
 }
@@ -200,16 +200,16 @@
     opacity: 0.95;
 }
 
-.status { background: #2563eb; }
-.edit { background: #16a34a; }
+.status { background: #5D845C; }
+.edit { background: #2F4630; }
 .delete { background: #dc2626; }
-.history { background: #7c3aed; }
+.history { background: #4b6b4f; }
 .share { background: #22c55e; }
 
 .reports-layout {
     display: flex;
     min-height: 100vh;
-    background: #eff2ff;
+    background: #EAF2EC;
 }
 
 .reports-content {
