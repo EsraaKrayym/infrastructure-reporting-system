@@ -42,6 +42,8 @@ const INITIAL_CATEGORIES = [
 ];
 
 export default function Categories() {
+    const currentUser = JSON.parse(localStorage.getItem("user") || "null");
+    const isAdmin = currentUser?.role === "admin";
     const [categories, setCategories] = useState(INITIAL_CATEGORIES);
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("alle");
@@ -142,7 +144,7 @@ export default function Categories() {
                 <div className="menu">
                     <Link to="/dashboard" className="menu-item">📊 Dashboard</Link>
                     <Link to="/reports" className="menu-item">📋 Meldungen</Link>
-                    <Link to="/users" className="menu-item">👥 Benutzer</Link>
+                    {isAdmin && <Link to="/users" className="menu-item">👥 Benutzer</Link>}
                     <Link to="/categories" className="menu-item active">🏷 Kategorien</Link>
                     <Link to="/map" className="menu-item">🗺 Map</Link>
                     <Link to="/notifications" className="menu-item">🔔 Benachrichtigungen</Link>

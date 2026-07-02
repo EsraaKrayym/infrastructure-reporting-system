@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 export const getAllUsers = async (req, res) => {
     try {
         const result = await pool.query(
-            "SELECT id, name, email, role, blocked FROM users ORDER BY id DESC"
+            "SELECT id, name, email, role, blocked, created_at FROM users ORDER BY created_at DESC, id DESC"
         );
         res.json(result.rows);
     } catch (err) {

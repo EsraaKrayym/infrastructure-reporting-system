@@ -28,6 +28,7 @@ export default function Benutzer() {
     });
 
     const currentUser = JSON.parse(localStorage.getItem("user") || "null");
+    const isCaseworker = currentUser?.role === "caseworker";
 
     const loadUsers = async () => {
         try {
@@ -155,9 +156,11 @@ export default function Benutzer() {
                         👥 Benutzer
                     </Link>
 
-                    <Link to="/categories" className="menu-item">
-                        🏷 Kategorien
-                    </Link>
+                    {isCaseworker && (
+                        <Link to="/categories" className="menu-item">
+                            🏷 Kategorien
+                        </Link>
+                    )}
 
                     <Link to="/map" className="menu-item">
                         🗺 Karte

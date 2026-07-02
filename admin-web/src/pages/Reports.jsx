@@ -11,6 +11,9 @@ export default function Reports() {
     const [loading, setLoading] = useState(true);
     const [lastUpdated, setLastUpdated] = useState(null);
     const [brokenImages, setBrokenImages] = useState({});
+    const currentUser = JSON.parse(localStorage.getItem("user") || "null");
+    const isAdmin = currentUser?.role === "admin";
+    const isCaseworker = currentUser?.role === "caseworker";
 
     const loadReports = async () => {
         try {
@@ -140,13 +143,17 @@ export default function Reports() {
                         📋 Meldungen
                     </Link>
 
-                    <Link to="/users" className="menu-item">
-                        👥 Benutzer
-                    </Link>
+                    {isAdmin && (
+                        <Link to="/users" className="menu-item">
+                            👥 Benutzer
+                        </Link>
+                    )}
 
-                    <Link to="/categories" className="menu-item">
-                        🏷 Kategorien
-                    </Link>
+                    {isCaseworker && (
+                        <Link to="/categories" className="menu-item">
+                            🏷 Kategorien
+                        </Link>
+                    )}
 
                     <Link to="/map" className="menu-item">
                         🗺 Map

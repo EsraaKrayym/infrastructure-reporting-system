@@ -7,6 +7,7 @@ import Reports from "./pages/Reports";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import Categories from "./pages/Categories";
+import Notifications from "./pages/Notifications";
 
 
 function ProtectedRoute({ children }) {
@@ -14,6 +15,51 @@ function ProtectedRoute({ children }) {
 
   if (!token) {
     return <Navigate to="/login" />;
+  }
+
+  return children;
+}
+
+function StaffRoute({ children }) {
+  const token = localStorage.getItem("token");
+  const user = JSON.parse(localStorage.getItem("user") || "null");
+
+  if (!token) {
+    return <Navigate to="/login" />;
+  }
+
+  if (!["admin", "caseworker"].includes(user?.role)) {
+    return <Navigate to="/login" />;
+  }
+
+  return children;
+}
+
+function CaseworkerRoute({ children }) {
+  const token = localStorage.getItem("token");
+  const user = JSON.parse(localStorage.getItem("user") || "null");
+
+  if (!token) {
+    return <Navigate to="/login" />;
+  }
+
+  if (user?.role !== "caseworker") {
+    return <Navigate to="/dashboard" />;
+  }
+
+  return children;
+}
+
+function AdminRoute({ children }) {
+  const token = localStorage.getItem("token");
+  const user = JSON.parse(localStorage.getItem("user") || "null");
+
+  if (!token) {
+    return <Navigate to="/login" />;
+  }
+
+  if (user?.role !== "admin") {
+    return <Navigate to="/dashboard" />;
   }
 
   return children;
@@ -30,20 +76,52 @@ function App() {
           <Route
               path="/dashboard"
               element={
-                <ProtectedRoute>
+                <StaffRoute>
                   <Dashboard />
-                </ProtectedRoute>
+                </StaffRoute>
               }
           />
             {/* Benutzer */}
             <Route
                 path="/users"
-                element={<Benutzer
-                />}
+              element={
+                <AdminRoute>
+                  <Benutzer />
+                </AdminRoute>
+              }
             />
-            <Route path="/map" element={<ReportsMap />} />
-            <Route path="/reports" element={<Reports />} />
-            <Route path="/categories" element={<Categories />} />
+            <Route
+                path="/map"
+                element={
+                    <StaffRoute>
+                      <ReportsMap />
+                    </StaffRoute>
+                }
+            />
+            <Route
+                path="/reports"
+                element={
+                    <StaffRoute>
+                      <Reports />
+                    </StaffRoute>
+                }
+            />
+            <Route
+              path="/notifications"
+              element={
+                    <StaffRoute>
+                  <Notifications />
+                    </StaffRoute>
+              }
+            />
+            <Route
+                path="/categories"
+                element={
+                    <CaseworkerRoute>
+                      <Categories />
+                    </CaseworkerRoute>
+                }
+            />
           {/* Default Route */}
           <Route path="*" element={<Navigate to="/login" />} />
             <Route

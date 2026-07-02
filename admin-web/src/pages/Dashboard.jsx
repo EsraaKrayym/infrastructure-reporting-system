@@ -5,6 +5,9 @@ import "../css/Dashboard.css";
 
 export default function Dashboard({ token }) {
     const [reports, setReports] = useState([]);
+    const currentUser = JSON.parse(localStorage.getItem("user") || "null");
+    const isAdmin = currentUser?.role === "admin";
+    const isCaseworker = currentUser?.role === "caseworker";
 
     useEffect(() => {
         const loadReports = async () => {
@@ -39,13 +42,17 @@ export default function Dashboard({ token }) {
                         📋 Meldungen
                     </Link>
 
-                    <Link to="/users" className="menu-item">
-                        👥 Benutzer
-                    </Link>
+                    {isAdmin && (
+                        <Link to="/users" className="menu-item">
+                            👥 Benutzer
+                        </Link>
+                    )}
 
-                    <Link to="/categories" className="menu-item">
-                        🏷 Kategorien
-                    </Link>
+                    {isCaseworker && (
+                        <Link to="/categories" className="menu-item">
+                            🏷 Kategorien
+                        </Link>
+                    )}
 
                     <Link to="/map" className="menu-item">
                         🗺 Map
