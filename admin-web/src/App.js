@@ -8,6 +8,7 @@ import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import Categories from "./pages/Categories";
 import Notifications from "./pages/Notifications";
+import Settings from "./pages/Settings";
 
 function StaffRoute({ children }) {
   const token = localStorage.getItem("token");
@@ -102,6 +103,14 @@ function App() {
                   <Notifications />
                     </StaffRoute>
               }
+            />
+            <Route
+                path="/settings"
+                element={
+                    <StaffRoute>
+                      <Settings />
+                    </StaffRoute>
+                }
             />
             <Route
                 path="/categories"
