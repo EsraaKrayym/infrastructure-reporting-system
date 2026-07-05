@@ -11,10 +11,17 @@ import {
   ScrollView,
 } from "react-native";
 import * as Location from "expo-location";
-import { createReport, getReports } from "@/services/api";
+import { createReport, getReports, syncPendingReports } from "@/services/api";
 import { AuthContext } from "@/context/AuthContext";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+
+const CATEGORY_OPTIONS = [
+  { value: "road_damage", label: "Straßenschäden" },
+  { value: "street_light", label: "Beleuchtung" },
+  { value: "waste", label: "Müll & Sauberkeit" },
+  { value: "other", label: "Sonstiges" },
+];
 
 export default function MapScreen() {
   const auth = useContext(AuthContext) as { token?: string | null } | null;
@@ -45,14 +52,35 @@ export default function MapScreen() {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [address, setAddress] = useState("");
   const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("road_damage");
   const [priority, setPriority] = useState("medium");
   const [photo, setPhoto] = useState<string | null>(null);
   const [selectedReport, setSelectedReport] = useState<any>(null);
+
+  const selectedCategoryLabel =
+    CATEGORY_OPTIONS.find((item) => item.value === category)?.label || "Infrastrukturmeldung";
 
   useEffect(() => {
     if (!token) return;
     loadReports();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) return;
+
+    const runSync = async () => {
+      try {
+        await syncPendingReports(token);
+      } catch {
+        // offline/timeout still possible
+      }
+    };
+
+    runSync();
+    const interval = setInterval(runSync, 15000);
+
+    return () => clearInterval(interval);
   }, [token]);
 
   useEffect(() => {
@@ -68,6 +96,7 @@ export default function MapScreen() {
 
   const openCreateReportModal = () => {
     setDescription("");
+    setCategory("road_damage");
     setPriority("medium");
     setPhoto(null);
     setShowHint(false);
@@ -82,25 +111,19 @@ export default function MapScreen() {
       return;
     }
 
-    const formData = new FormData();
-    formData.append("title", "Meldung vom Mobilgerät");
-    formData.append("category", "road_damage");
-    formData.append("description", description);
-    formData.append("priority", priority);
-    formData.append("address", address);
-    formData.append("latitude", userLocation.latitude.toString());
-    formData.append("longitude", userLocation.longitude.toString());
-
-    if (photo) {
-      formData.append("photo", {
-        uri: photo,
-        type: "image/jpeg",
-        name: "report.jpg",
-      } as any);
-    }
+    const payload = {
+      title: selectedCategoryLabel,
+      category,
+      description,
+      priority,
+      address,
+      latitude: userLocation.latitude,
+      longitude: userLocation.longitude,
+      photo: photo || undefined,
+    };
 
     try {
-      const result = await createReport(token, formData);
+      const result = await createReport(token, payload);
 
       if (result?.offline) {
         alert("Report offline gespeichert. Er wird gesendet, sobald die Verbindung wiederhergestellt ist.");
@@ -109,6 +132,7 @@ export default function MapScreen() {
       }
 
       setDescription("");
+      setCategory("road_damage");
       setPriority("medium");
       setPhoto(null);
       setShowModal(false);
@@ -384,6 +408,29 @@ export default function MapScreen() {
                     ))}
                   </View>
 
+                  <Text style={styles.label}>Kategorie</Text>
+                  <View style={styles.categoryRow}>
+                    {CATEGORY_OPTIONS.map((c) => (
+                      <TouchableOpacity
+                        key={c.value}
+                        onPress={() => setCategory(c.value)}
+                        style={[
+                          styles.categoryBtn,
+                          category === c.value && styles.categoryBtnActive,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.categoryBtnText,
+                            category === c.value && styles.categoryBtnTextActive,
+                          ]}
+                        >
+                          {c.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
                   <Text style={styles.label}>Ort</Text>
                   <TextInput
                       value={address}
@@ -642,10 +689,35 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 10,
   },
+  categoryRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 8,
+  },
   priorityBtn: {
     paddingVertical: 8,
     paddingHorizontal: 15,
     borderRadius: 15,
+  },
+  categoryBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#d1d5db",
+    backgroundColor: "#fff",
+  },
+  categoryBtnActive: {
+    backgroundColor: "#5D845CFF",
+    borderColor: "#5D845CFF",
+  },
+  categoryBtnText: {
+    color: "#334155",
+    fontWeight: "600",
+  },
+  categoryBtnTextActive: {
+    color: "#fff",
   },
   priorityText: {
     color: "white",

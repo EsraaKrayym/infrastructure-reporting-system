@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import API from "../services/api";
 import "../css/Reports.css";
 import { Link } from "react-router-dom";
+import { updateReportPriority, updateReportStatus } from "../services/api";
 
 const uploadBaseUrl = API.defaults.baseURL.replace(/\/api$/, "");
 
@@ -9,6 +10,7 @@ export default function Reports() {
     const [reports, setReports] = useState([]);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(true);
+    const [updatingId, setUpdatingId] = useState(null);
     const [lastUpdated, setLastUpdated] = useState(null);
     const [brokenImages, setBrokenImages] = useState({});
     const currentUser = JSON.parse(localStorage.getItem("user") || "null");
@@ -92,6 +94,33 @@ export default function Reports() {
                 return "Repariert";
             default:
                 return status || "Unbekannt";
+        }
+    };
+
+    const statusOptions = ["Neu", "In Prüfung", "In Bearbeitung", "Erledigt", "Abgelehnt"];
+    const priorityOptions = ["low", "medium", "high"];
+
+    const handleUpdateStatus = async (id, status) => {
+        try {
+            setUpdatingId(id);
+            await updateReportStatus(id, status);
+            await loadReports();
+        } catch (err) {
+            alert(err?.response?.data?.message || "Status konnte nicht aktualisiert werden");
+        } finally {
+            setUpdatingId(null);
+        }
+    };
+
+    const handleUpdatePriority = async (id, priority) => {
+        try {
+            setUpdatingId(id);
+            await updateReportPriority(id, priority);
+            await loadReports();
+        } catch (err) {
+            alert(err?.response?.data?.message || "Priorität konnte nicht aktualisiert werden");
+        } finally {
+            setUpdatingId(null);
         }
     };
 
@@ -301,6 +330,38 @@ export default function Reports() {
                                         <span className="report-meta-label">Datum & Uhrzeit</span>
                                         <span className="report-meta-value">{createdDateTime}</span>
                                     </div>
+
+                                    {isCaseworker && (
+                                        <div className="report-meta-row report-meta-row-stack" style={{ marginTop: 8 }}>
+                                            <span className="report-meta-label">Bearbeitung</span>
+
+                                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                                                <select
+                                                    defaultValue={report.status || "Neu"}
+                                                    onChange={(e) => handleUpdateStatus(report.id, e.target.value)}
+                                                    disabled={updatingId === report.id}
+                                                    style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #d1d5db" }}
+                                                >
+                                                    {statusOptions.map((s) => (
+                                                        <option key={s} value={s}>{s}</option>
+                                                    ))}
+                                                </select>
+
+                                                <select
+                                                    defaultValue={report.priority || "medium"}
+                                                    onChange={(e) => handleUpdatePriority(report.id, e.target.value)}
+                                                    disabled={updatingId === report.id}
+                                                    style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #d1d5db" }}
+                                                >
+                                                    {priorityOptions.map((p) => (
+                                                        <option key={p} value={p}>
+                                                            {p === "high" ? "Hoch" : p === "medium" ? "Mittel" : "Niedrig"}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                             </div>

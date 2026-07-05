@@ -19,17 +19,18 @@ router.get("/my", verifyToken, requireRole(["citizen"]), getReports);
 router.get("/", verifyToken, requireRole(["admin","caseworker"]), getReports);
 
 // Caseworker → Status ändern
-router.put("/:id/status", verifyToken, requireRole(["admin","caseworker"]), updateReportStatus);
+router.put("/:id/status", verifyToken, requireRole(["caseworker"]), updateReportStatus);
 
 router.put(
     "/:id/priority",
     verifyToken,
-    requireRole(["admin","caseworker"]),
+    requireRole(["caseworker"]),
     updatePriority
 );
 router.post(
     "/",
     verifyToken,
+    requireRole(["citizen"]),
     upload.single("photo"),
     createReport
 );

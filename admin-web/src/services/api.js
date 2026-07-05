@@ -20,6 +20,13 @@ export const login = (data) =>
 
 export const getReports = () =>
     API.get("/reports");
+
+export const updateReportStatus = (id, status) =>
+    API.put(`/reports/${id}/status`, { status });
+
+export const updateReportPriority = (id, priority) =>
+    API.put(`/reports/${id}/priority`, { priority });
+
 export const register = (data) =>
     API.post("/auth/register", data);
 

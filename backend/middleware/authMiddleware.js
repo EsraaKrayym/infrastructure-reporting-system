@@ -1,9 +1,10 @@
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
+import pool from "../config/db.js";
 
 dotenv.config(); // MUSS GANZ OBEN stehen
 
-export const verifyToken = (req, res, next) => {
+export const verifyToken = async (req, res, next) => {
     const header = req.headers.authorization;
 
     if (!header) {
@@ -14,7 +15,26 @@ export const verifyToken = (req, res, next) => {
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        req.user = decoded;
+
+        const userResult = await pool.query(
+            "SELECT id, role, blocked FROM users WHERE id = $1",
+            [decoded.id]
+        );
+
+        if (userResult.rows.length === 0) {
+            return res.status(401).json({ message: "Invalid token" });
+        }
+
+        const user = userResult.rows[0];
+
+        if (user.blocked) {
+            return res.status(403).json({ message: "Account blocked" });
+        }
+
+        req.user = {
+            id: user.id,
+            role: user.role,
+        };
         next();
     } catch (err) {
         console.log("JWT ERROR:", err.message);
