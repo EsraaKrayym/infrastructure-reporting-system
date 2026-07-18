@@ -4,7 +4,11 @@
   "main": "server.js",
   "type": "module",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "migrate:normalize": "node scripts/runMigration.js 2026-07-18-normalize-schema.sql",
+    "migrate:cleanup": "node scripts/runMigration.js 2026-07-18-drop-legacy-columns.sql",
+    "migrate:fix-fk": "node scripts/runMigration.js 2026-07-18-fix-reports-user-fk.sql",
+    "migrate": "node scripts/runMigration.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
