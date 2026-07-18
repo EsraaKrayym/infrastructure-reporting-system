@@ -2,6 +2,8 @@ import express from "express";
 import { verifyToken } from "../middleware/authMiddleware.js";
 import { requireRole } from "../middleware/roleMiddleware.js";
 import {
+    getCurrentUser,
+    updateCurrentUser,
     getAllUsers,
     toggleBlockUser,
     deleteUser,
@@ -9,6 +11,9 @@ import {
 } from "../controllers/userController.js";
 
 const router = express.Router();
+
+router.get("/me", verifyToken, getCurrentUser);
+router.put("/me", verifyToken, updateCurrentUser);
 
 // Nur Admin darf
 router.get("/", verifyToken, requireRole(["admin"]), getAllUsers);

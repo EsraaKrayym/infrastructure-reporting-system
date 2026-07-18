@@ -9,6 +9,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import Categories from "./pages/Categories";
 import Notifications from "./pages/Notifications";
 import Settings from "./pages/Settings";
+import Statistics from "./pages/Statistics";
 
 function StaffRoute({ children }) {
   const token = localStorage.getItem("token");
@@ -101,6 +102,14 @@ function App() {
               element={
                     <StaffRoute>
                   <Notifications />
+                    </StaffRoute>
+              }
+            />
+            <Route
+              path="/statistics"
+              element={
+                    <StaffRoute>
+                  <Statistics />
                     </StaffRoute>
               }
             />

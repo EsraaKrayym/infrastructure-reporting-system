@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { getCurrentUser, getReports, updateCurrentUser } from "../services/api";
 import "../css/Settings.css";
 
 const APP_VERSION = "v1.0.0";
@@ -10,8 +11,9 @@ export default function Settings() {
     const isCaseworker = currentUser?.role === "caseworker";
 
     const [form, setForm] = useState({
-        displayName: currentUser?.name || "",
-        email: currentUser?.email || "",
+        displayName: "",
+        email: "",
+        password: "",
         language: localStorage.getItem("settings_language") || "de",
         emailNotifications: localStorage.getItem("settings_email_notifications") !== "false",
         pushNotifications: localStorage.getItem("settings_push_notifications") !== "false",
@@ -19,41 +21,89 @@ export default function Settings() {
         autoRefresh: localStorage.getItem("settings_auto_refresh") !== "false",
     });
 
+    const [profile, setProfile] = useState(currentUser);
     const [saving, setSaving] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [message, setMessage] = useState("");
+    const [error, setError] = useState("");
+    const [reportStats, setReportStats] = useState({ total: 0, open: 0, done: 0, high: 0 });
+
+    useEffect(() => {
+        const loadData = async () => {
+            try {
+                setLoading(true);
+                setError("");
+
+                const [userRes, reportsRes] = await Promise.all([getCurrentUser(), getReports()]);
+                const user = userRes.data;
+                const reports = Array.isArray(reportsRes.data) ? reportsRes.data : [];
+
+                setProfile(user);
+                setForm((prev) => ({
+                    ...prev,
+                    displayName: user?.name || "",
+                    email: user?.email || "",
+                    password: "",
+                }));
+                localStorage.setItem("user", JSON.stringify(user));
+
+                setReportStats({
+                    total: reports.length,
+                    open: reports.filter((r) => String(r.status || "").toLowerCase() === "neu").length,
+                    done: reports.filter((r) => String(r.status || "").toLowerCase() === "erledigt").length,
+                    high: reports.filter((r) => String(r.priority || "").toLowerCase() === "high").length,
+                });
+            } catch (err) {
+                setError(err?.response?.data?.message || err?.message || "Einstellungen konnten nicht geladen werden");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadData();
+    }, []);
 
     const roleLabel = useMemo(() => {
-        if (currentUser?.role === "admin") return "Administrator";
-        if (currentUser?.role === "caseworker") return "Sachbearbeiter";
+        if (profile?.role === "admin") return "Administrator";
+        if (profile?.role === "caseworker") return "Sachbearbeiter";
         return "Benutzer";
-    }, [currentUser?.role]);
+    }, [profile?.role]);
 
     const onChange = (field, value) => {
         setForm((prev) => ({ ...prev, [field]: value }));
         setMessage("");
     };
 
-    const handleSave = (e) => {
+    const handleSave = async (e) => {
         e.preventDefault();
         setSaving(true);
+        setMessage("");
+        setError("");
 
-        setTimeout(() => {
+        try {
             localStorage.setItem("settings_language", form.language);
             localStorage.setItem("settings_email_notifications", String(form.emailNotifications));
             localStorage.setItem("settings_push_notifications", String(form.pushNotifications));
             localStorage.setItem("settings_compact_mode", String(form.compactMode));
             localStorage.setItem("settings_auto_refresh", String(form.autoRefresh));
 
-            const updatedUser = {
-                ...(currentUser || {}),
-                name: form.displayName.trim() || currentUser?.name || "Benutzer",
-                email: form.email.trim() || currentUser?.email || "",
-            };
+            const res = await updateCurrentUser({
+                name: form.displayName.trim(),
+                email: form.email.trim(),
+                password: form.password.trim() || undefined,
+            });
+
+            const updatedUser = res.data?.user;
+            setProfile(updatedUser);
             localStorage.setItem("user", JSON.stringify(updatedUser));
+            setForm((prev) => ({ ...prev, password: "" }));
 
             setMessage("Einstellungen erfolgreich gespeichert.");
+        } catch (err) {
+            setError(err?.response?.data?.message || err?.message || "Speichern fehlgeschlagen");
+        } finally {
             setSaving(false);
-        }, 450);
+        }
     };
 
     return (
@@ -75,10 +125,10 @@ export default function Settings() {
                 </div>
 
                 <div className="admin-box">
-                    <div className="avatar">{String(currentUser?.name || "A").charAt(0).toUpperCase()}</div>
+                    <div className="avatar">{String(profile?.name || currentUser?.name || "A").charAt(0).toUpperCase()}</div>
                     <div>
-                        <h4>{currentUser?.name || "Benutzer"}</h4>
-                        <p>{currentUser?.email || "-"}</p>
+                        <h4>{profile?.name || currentUser?.name || "Benutzer"}</h4>
+                        <p>{profile?.email || currentUser?.email || "-"}</p>
                     </div>
                 </div>
             </div>
@@ -87,18 +137,20 @@ export default function Settings() {
                 <div className="settings-header">
                     <div>
                         <h1>Einstellungen</h1>
-                        <p>Verwalte Konto, Benachrichtigungen und Systemoptionen.</p>
+                        <p>Verwalte Profil, Arbeitsansicht und Live-Systeminformationen.</p>
                     </div>
                     <button className="save-btn" onClick={handleSave} disabled={saving}>
                         {saving ? "Speichern..." : "Änderungen speichern"}
                     </button>
                 </div>
 
+                {loading && <p>⏳ Einstellungen werden geladen...</p>}
                 {message && <p className="success-msg">✅ {message}</p>}
+                {error && <p className="error-msg">❌ {error}</p>}
 
                 <form className="settings-grid" onSubmit={handleSave}>
                     <section className="settings-card">
-                        <h3>Profil</h3>
+                        <h3>Profildaten</h3>
 
                         <label>Anzeigename</label>
                         <input
@@ -114,6 +166,14 @@ export default function Settings() {
                             onChange={(e) => onChange("email", e.target.value)}
                         />
 
+                        <label>Neues Passwort</label>
+                        <input
+                            type="password"
+                            value={form.password}
+                            onChange={(e) => onChange("password", e.target.value)}
+                            placeholder="Leer lassen, wenn unverändert"
+                        />
+
                         <label>Sprache</label>
                         <select
                             value={form.language}
@@ -125,7 +185,7 @@ export default function Settings() {
                     </section>
 
                     <section className="settings-card">
-                        <h3>Benachrichtigungen</h3>
+                        <h3>Benachrichtigungen im Browser</h3>
 
                         <div className="toggle-row">
                             <div>
@@ -180,11 +240,22 @@ export default function Settings() {
                         </div>
                     </section>
 
+                    <section className="settings-card metrics-card">
+                        <h3>Live-Überblick</h3>
+                        <div className="metric-box-grid">
+                            <div className="metric-box"><span>Meldungen gesamt</span><strong>{reportStats.total}</strong></div>
+                            <div className="metric-box"><span>Neu</span><strong>{reportStats.open}</strong></div>
+                            <div className="metric-box"><span>Erledigt</span><strong>{reportStats.done}</strong></div>
+                            <div className="metric-box"><span>Hohe Priorität</span><strong>{reportStats.high}</strong></div>
+                        </div>
+                    </section>
+
                     <section className="settings-card system-card">
                         <h3>Systeminformationen</h3>
                         <div className="info-line"><span>Rolle</span><strong>{roleLabel}</strong></div>
                         <div className="info-line"><span>Version</span><strong>{APP_VERSION}</strong></div>
-                        <div className="info-line"><span>Konto-ID</span><strong>#{currentUser?.id ?? "-"}</strong></div>
+                        <div className="info-line"><span>Konto-ID</span><strong>#{profile?.id ?? currentUser?.id ?? "-"}</strong></div>
+                        <div className="info-line"><span>Konto erstellt</span><strong>{profile?.created_at ? new Date(profile.created_at).toLocaleDateString("de-DE") : "-"}</strong></div>
                     </section>
                 </form>
             </div>

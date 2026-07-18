@@ -1,6 +1,107 @@
 import pool from "../config/db.js";
 import bcrypt from "bcryptjs";
 
+export const getCurrentUser = async (req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT
+                u.id,
+                u.name,
+                u.email,
+                u.blocked,
+                u.created_at,
+                u.role_id,
+                r.name AS role,
+                r.description AS role_description
+             FROM users u
+             LEFT JOIN roles r ON r.id = u.role_id
+             WHERE u.id = $1
+             LIMIT 1`,
+            [req.user.id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        res.json(result.rows[0]);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+export const updateCurrentUser = async (req, res) => {
+    try {
+        const { name, email, password } = req.body;
+
+        if (!name || !String(name).trim()) {
+            return res.status(400).json({ message: "Name ist erforderlich" });
+        }
+
+        if (!email || !String(email).trim()) {
+            return res.status(400).json({ message: "E-Mail ist erforderlich" });
+        }
+
+        const normalizedEmail = String(email).trim().toLowerCase();
+        const normalizedName = String(name).trim();
+
+        const existingUser = await pool.query(
+            "SELECT id FROM users WHERE email = $1 AND id <> $2",
+            [normalizedEmail, req.user.id]
+        );
+
+        if (existingUser.rows.length > 0) {
+            return res.status(400).json({ message: "E-Mail bereits vergeben" });
+        }
+
+        let passwordClause = "";
+        const values = [normalizedName, normalizedEmail, req.user.id];
+
+        if (password && String(password).trim()) {
+            if (String(password).length < 6) {
+                return res.status(400).json({ message: "Passwort muss mindestens 6 Zeichen haben" });
+            }
+
+            const hashedPassword = await bcrypt.hash(String(password), 10);
+            values.splice(2, 0, hashedPassword);
+            passwordClause = ", password = $3";
+        }
+
+        await pool.query(
+            `UPDATE users
+             SET name = $1,
+                 email = $2
+                 ${passwordClause}
+             WHERE id = $${password && String(password).trim() ? 4 : 3}`,
+            values
+        );
+
+        const updatedUser = await pool.query(
+            `SELECT
+                u.id,
+                u.name,
+                u.email,
+                u.blocked,
+                u.created_at,
+                u.role_id,
+                r.name AS role,
+                r.description AS role_description
+             FROM users u
+             LEFT JOIN roles r ON r.id = u.role_id
+             WHERE u.id = $1
+             LIMIT 1`,
+            [req.user.id]
+        );
+
+        res.json({
+            message: "Profil erfolgreich aktualisiert",
+            user: updatedUser.rows[0],
+        });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
 // Alle User holen (Admin)
 export const getAllUsers = async (req, res) => {
     try {

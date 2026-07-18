@@ -36,6 +36,12 @@ export const register = (data) =>
 export const getUsers = () =>
     API.get("/users");
 
+export const getCurrentUser = () =>
+    API.get("/users/me");
+
+export const updateCurrentUser = (data) =>
+    API.put("/users/me", data);
+
 export const createCaseworker = (data) =>
     API.post("/users", data);
 
