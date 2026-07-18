@@ -1,7 +1,9 @@
 import express from "express";
 import {
     createReport,
-    getReports, updatePriority,
+    getReports,
+    updatePriority,
+    updateReport,
     updateReportStatus
 } from "../controllers/reportController.js";
 
@@ -27,6 +29,14 @@ router.put(
     requireRole(["caseworker"]),
     updatePriority
 );
+
+router.put(
+    "/:id",
+    verifyToken,
+    requireRole(["caseworker"]),
+    updateReport
+);
+
 router.post(
     "/",
     verifyToken,

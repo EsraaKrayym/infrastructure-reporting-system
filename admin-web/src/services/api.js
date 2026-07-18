@@ -27,6 +27,9 @@ export const updateReportStatus = (id, status) =>
 export const updateReportPriority = (id, priority) =>
     API.put(`/reports/${id}/priority`, { priority });
 
+export const updateReport = (id, data) =>
+    API.put(`/reports/${id}`, data);
+
 export const register = (data) =>
     API.post("/auth/register", data);
 

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import API from "../services/api";
 import "../css/Reports.css";
 import { Link } from "react-router-dom";
-import { updateReportPriority, updateReportStatus } from "../services/api";
+import { updateReport, updateReportPriority, updateReportStatus } from "../services/api";
 
 const uploadBaseUrl = API.defaults.baseURL.replace(/\/api$/, "");
 
@@ -119,6 +119,31 @@ export default function Reports() {
             await loadReports();
         } catch (err) {
             alert(err?.response?.data?.message || "Priorität konnte nicht aktualisiert werden");
+        } finally {
+            setUpdatingId(null);
+        }
+    };
+
+    const handleQuickEdit = async (report) => {
+        const nextTitle = window.prompt("Titel", report.title || "") ;
+        if (nextTitle === null) return;
+
+        const nextDescription = window.prompt("Beschreibung", report.description || "");
+        if (nextDescription === null) return;
+
+        const nextAddress = window.prompt("Adresse", report.address || "");
+        if (nextAddress === null) return;
+
+        try {
+            setUpdatingId(report.id);
+            await updateReport(report.id, {
+                title: nextTitle,
+                description: nextDescription,
+                address: nextAddress,
+            });
+            await loadReports();
+        } catch (err) {
+            alert(err?.response?.data?.message || "Report konnte nicht bearbeitet werden");
         } finally {
             setUpdatingId(null);
         }
@@ -359,6 +384,15 @@ export default function Reports() {
                                                         </option>
                                                     ))}
                                                 </select>
+
+                                                <button
+                                                    type="button"
+                                                    className="btn refresh"
+                                                    onClick={() => handleQuickEdit(report)}
+                                                    disabled={updatingId === report.id}
+                                                >
+                                                    Bearbeiten
+                                                </button>
                                             </div>
                                         </div>
                                     )}

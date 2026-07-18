@@ -297,3 +297,167 @@ export const updatePriority = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+
+/* =========================================
+   UPDATE REPORT (Caseworker)
+========================================= */
+export const updateReport = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const {
+            title,
+            description,
+            category,
+            status,
+            priority,
+            address,
+        } = req.body;
+
+        if (req.user.role !== "caseworker") {
+            return res.status(403).json({ message: "Caseworker access required" });
+        }
+
+        const currentResult = await pool.query(
+            `SELECT
+                r.id,
+                r.title,
+                r.description,
+                r.category_id,
+                c.name AS category,
+                r.status_id,
+                s.name AS status,
+                r.priority,
+                r.address
+             FROM reports r
+             LEFT JOIN categories c ON c.id = r.category_id
+             LEFT JOIN report_statuses s ON s.id = r.status_id
+             WHERE r.id = $1`,
+            [id]
+        );
+
+        if (currentResult.rows.length === 0) {
+            return res.status(404).json({ message: "Report not found" });
+        }
+
+        const current = currentResult.rows[0];
+
+        let nextCategoryId = current.category_id;
+        let nextStatusId = current.status_id;
+        let nextPriority = current.priority;
+
+        if (category !== undefined) {
+            const normalizedCategory = normalizeCategoryName(category);
+            const categoryResult = await pool.query(
+                `SELECT id FROM categories WHERE LOWER(name) = LOWER($1) LIMIT 1`,
+                [normalizedCategory]
+            );
+
+            if (categoryResult.rows.length === 0) {
+                return res.status(400).json({ message: "Invalid category" });
+            }
+
+            nextCategoryId = categoryResult.rows[0].id;
+        }
+
+        if (status !== undefined) {
+            const normalizedStatus = normalizeStatusName(status);
+            const statusResult = await pool.query(
+                `SELECT id FROM report_statuses WHERE LOWER(name) = LOWER($1) LIMIT 1`,
+                [normalizedStatus]
+            );
+
+            if (statusResult.rows.length === 0) {
+                return res.status(400).json({ message: "Invalid status" });
+            }
+
+            nextStatusId = statusResult.rows[0].id;
+        }
+
+        if (priority !== undefined) {
+            const normalizedPriority = String(priority || "").toLowerCase();
+            const allowedPriorities = ["low", "medium", "high"];
+
+            if (!allowedPriorities.includes(normalizedPriority)) {
+                return res.status(400).json({ message: "Invalid priority" });
+            }
+
+            nextPriority = normalizedPriority;
+        }
+
+        await pool.query(
+            `UPDATE reports
+             SET
+                title = COALESCE($1, title),
+                description = COALESCE($2, description),
+                category_id = $3,
+                status_id = $4,
+                priority = $5,
+                address = COALESCE($6, address)
+             WHERE id = $7`,
+            [
+                title ?? null,
+                description ?? null,
+                nextCategoryId,
+                nextStatusId,
+                nextPriority,
+                address ?? null,
+                id,
+            ]
+        );
+
+        const updatedResult = await pool.query(
+            `SELECT
+                r.id,
+                r.title,
+                r.description,
+                r.category_id,
+                c.name AS category,
+                r.status_id,
+                s.name AS status,
+                r.priority,
+                r.address
+             FROM reports r
+             LEFT JOIN categories c ON c.id = r.category_id
+             LEFT JOIN report_statuses s ON s.id = r.status_id
+             WHERE r.id = $1`,
+            [id]
+        );
+
+        const updated = updatedResult.rows[0];
+
+        await pool.query(
+            `INSERT INTO audit_logs (report_id, changed_by, action, old_value, new_value)
+             VALUES ($1, $2, $3, $4, $5)`,
+            [
+                id,
+                req.user.id,
+                "Report updated",
+                JSON.stringify({
+                    title: current.title,
+                    description: current.description,
+                    category: current.category,
+                    status: current.status,
+                    priority: current.priority,
+                    address: current.address,
+                }),
+                JSON.stringify({
+                    title: updated.title,
+                    description: updated.description,
+                    category: updated.category,
+                    status: updated.status,
+                    priority: updated.priority,
+                    address: updated.address,
+                }),
+            ]
+        );
+
+        return res.json({
+            message: "Report updated",
+            report: updated,
+        });
+
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
