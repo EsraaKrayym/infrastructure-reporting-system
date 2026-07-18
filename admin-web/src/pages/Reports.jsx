@@ -163,6 +163,10 @@ export default function Reports() {
     const resolvePhotoUrl = (photo) => {
         if (!photo) return null;
 
+        if (photo.startsWith("data:image/")) {
+            return photo;
+        }
+
         if (/^https?:\/\//i.test(photo)) {
             return photo;
         }

@@ -1,23 +1,21 @@
 import multer from "multer";
-import fs from "fs";
-import path from "path";
 
-const uploadsDir = path.resolve(process.cwd(), "uploads");
+const storage = multer.memoryStorage();
 
-if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
-}
+const fileFilter = (req, file, cb) => {
+    const allowedMimeTypes = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
 
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, uploadsDir);
-    },
-    filename: (req, file, cb) => {
-        const safeName = (file.originalname || "report.jpg")
-            .replace(/\s+/g, "-")
-            .replace(/[^a-zA-Z0-9._-]/g, "");
-        cb(null, Date.now() + "-" + safeName);
+    if (!allowedMimeTypes.includes(String(file.mimetype || "").toLowerCase())) {
+        return cb(new Error("Nur JPG, PNG oder WEBP Bilder sind erlaubt"));
+    }
+
+    cb(null, true);
+};
+
+export const upload = multer({
+    storage,
+    fileFilter,
+    limits: {
+        fileSize: 5 * 1024 * 1024,
     },
 });
-
-export const upload = multer({ storage });

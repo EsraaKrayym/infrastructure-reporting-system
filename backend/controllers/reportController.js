@@ -55,6 +55,18 @@ const normalizeStatusName = (rawStatus) => {
     return STATUS_ALIASES[key] || String(rawStatus || "").trim();
 };
 
+const buildPhotoValue = (file) => {
+    if (!file) return null;
+
+    if (file.buffer) {
+        const mimeType = String(file.mimetype || "image/jpeg").toLowerCase();
+        const base64 = file.buffer.toString("base64");
+        return `data:${mimeType};base64,${base64}`;
+    }
+
+    return file.filename || null;
+};
+
 /* =========================================
    CREATE REPORT (Citizen)
 ========================================= */
@@ -70,7 +82,7 @@ export const createReport = async (req, res) => {
             address
         } = req.body;
 
-        const photo = req.file ? req.file.filename : null;
+        const photo = buildPhotoValue(req.file);
 
         if (!title || !category) {
             return res.status(400).json({
