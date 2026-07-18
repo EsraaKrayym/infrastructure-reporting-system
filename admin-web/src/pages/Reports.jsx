@@ -231,11 +231,11 @@ export default function Reports() {
                 </div>
 
                 <div className="admin-box">
-                    <div className="avatar">A</div>
+                    <div className="avatar">{String(currentUser?.name || "A").charAt(0).toUpperCase()}</div>
 
                     <div>
-                        <h4>Administrator</h4>
-                        <p>admin@cityreport.de</p>
+                        <h4>{currentUser?.name || "Benutzer"}</h4>
+                        <p>{currentUser?.email || "-"}</p>
                     </div>
                 </div>
 

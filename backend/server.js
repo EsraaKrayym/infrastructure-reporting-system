@@ -7,6 +7,7 @@ import authRoutes from "./routes/authRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
 import bcrypt from "bcryptjs";
 import userRoutes from "./routes/userRoutes.js";
+import categoryRoutes from "./routes/categoryRoutes.js";
 import pool from "./config/db.js";
 dotenv.config();
 
@@ -23,6 +24,7 @@ app.use(express.json());
 app.use("/uploads", express.static(uploadsDir));
 app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/categories", categoryRoutes);
 app.use("/api/reports", reportRoutes);
 
 const ensureDefaultAdmin = async () => {

@@ -1,61 +1,51 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { createCategory, deleteCategory, getCategories, updateCategory } from "../services/api";
 import "../css/Categories.css";
 
-const INITIAL_CATEGORIES = [
-    {
-        id: 1,
-        name: "Straßenschäden",
-        slug: "road_damage",
-        description: "Schlaglöcher, Risse und beschädigte Fahrbahnen",
-        priority: "Hoch",
-        active: true,
-        reports: 28,
-    },
-    {
-        id: 2,
-        name: "Beleuchtung",
-        slug: "street_light",
-        description: "Defekte Straßenlampen und schlechte Beleuchtung",
-        priority: "Mittel",
-        active: true,
-        reports: 14,
-    },
-    {
-        id: 3,
-        name: "Müll & Sauberkeit",
-        slug: "waste",
-        description: "Illegale Müllablagerung, überfüllte Mülleimer",
-        priority: "Mittel",
-        active: true,
-        reports: 19,
-    },
-    {
-        id: 4,
-        name: "Sonstiges",
-        slug: "other",
-        description: "Weitere Infrastruktur-Meldungen",
-        priority: "Niedrig",
-        active: false,
-        reports: 7,
-    },
-];
+const slugify = (value) =>
+    String(value || "")
+        .trim()
+        .toLowerCase()
+        .replace(/[ä]/g, "ae")
+        .replace(/[ö]/g, "oe")
+        .replace(/[ü]/g, "ue")
+        .replace(/[ß]/g, "ss")
+        .replace(/\s+/g, "_")
+        .replace(/[^a-z0-9_]/g, "");
 
 export default function Categories() {
     const currentUser = JSON.parse(localStorage.getItem("user") || "null");
     const isAdmin = currentUser?.role === "admin";
-    const [categories, setCategories] = useState(INITIAL_CATEGORIES);
+    const [categories, setCategories] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
     const [search, setSearch] = useState("");
-    const [statusFilter, setStatusFilter] = useState("alle");
 
     const [showModal, setShowModal] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [editingCategory, setEditingCategory] = useState(null);
     const [form, setForm] = useState({
         name: "",
-        slug: "",
         description: "",
-        priority: "Mittel",
     });
+
+    const loadCategories = async () => {
+        try {
+            setLoading(true);
+            const res = await getCategories();
+            setCategories(Array.isArray(res.data) ? res.data : []);
+            setError("");
+        } catch (err) {
+            setError(err?.response?.data?.message || err?.message || "Kategorien konnten nicht geladen werden");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadCategories();
+    }, []);
 
     const filtered = useMemo(() => {
         return categories.filter((c) => {
@@ -63,75 +53,72 @@ export default function Categories() {
             const matchesSearch =
                 !q ||
                 c.name.toLowerCase().includes(q) ||
-                c.slug.toLowerCase().includes(q) ||
+                slugify(c.name).includes(q) ||
                 c.description.toLowerCase().includes(q);
 
-            const matchesStatus =
-                statusFilter === "alle" ||
-                (statusFilter === "aktiv" && c.active) ||
-                (statusFilter === "inaktiv" && !c.active);
-
-            return matchesSearch && matchesStatus;
+            return matchesSearch;
         });
-    }, [categories, search, statusFilter]);
+    }, [categories, search]);
 
     const totals = useMemo(() => {
         const total = categories.length;
-        const active = categories.filter((c) => c.active).length;
-        const reports = categories.reduce((sum, c) => sum + c.reports, 0);
-        return { total, active, reports };
+        const reports = categories.reduce((sum, c) => sum + Number(c.report_count || 0), 0);
+        const used = categories.filter((c) => Number(c.report_count || 0) > 0).length;
+        return { total, used, reports };
     }, [categories]);
 
-    const handleToggleActive = (id) => {
-        setCategories((prev) =>
-            prev.map((c) =>
-                c.id === id ? { ...c, active: !c.active } : c
-            )
-        );
-    };
-
-    const handleDelete = (id) => {
+    const handleDelete = async (id) => {
         const item = categories.find((c) => c.id === id);
         const ok = window.confirm(`Kategorie "${item?.name}" wirklich löschen?`);
         if (!ok) return;
-        setCategories((prev) => prev.filter((c) => c.id !== id));
+
+        try {
+            await deleteCategory(id);
+            await loadCategories();
+        } catch (err) {
+            alert(err?.response?.data?.message || "Kategorie konnte nicht gelöscht werden");
+        }
     };
 
-    const handleCreate = (e) => {
+    const handleEdit = (category) => {
+        setEditingCategory(category);
+        setForm({
+            name: category.name || "",
+            description: category.description || "",
+        });
+        setShowModal(true);
+    };
+
+    const resetModal = () => {
+        setForm({ name: "", description: "" });
+        setEditingCategory(null);
+        setShowModal(false);
+    };
+
+    const handleCreate = async (e) => {
         e.preventDefault();
         setSaving(true);
 
-        const slug =
-            form.slug.trim() ||
-            form.name
-                .trim()
-                .toLowerCase()
-                .replace(/\s+/g, "_")
-                .replace(/[^a-z0-9_]/g, "");
-
-        setTimeout(() => {
-            setCategories((prev) => [
-                {
-                    id: Date.now(),
+        try {
+            if (editingCategory) {
+                await updateCategory(editingCategory.id, {
                     name: form.name.trim(),
-                    slug,
                     description: form.description.trim(),
-                    priority: form.priority,
-                    active: true,
-                    reports: 0,
-                },
-                ...prev,
-            ]);
+                });
+            } else {
+                await createCategory({
+                    name: form.name.trim(),
+                    description: form.description.trim(),
+                });
+            }
 
-            setForm({
-                name: "",
-                slug: "",
-                description: "",
-                priority: "Mittel",
-            });
+            await loadCategories();
+            resetModal();
+        } catch (err) {
+            alert(err?.response?.data?.message || "Kategorie konnte nicht gespeichert werden");
+        } finally {
             setSaving(false);
-            setShowModal(false);
-        }, 450);
+        }
     };
 
     return (
@@ -153,10 +140,10 @@ export default function Categories() {
                 </div>
 
                 <div className="admin-box">
-                    <div className="avatar">A</div>
+                    <div className="avatar">{String(currentUser?.name || "A").charAt(0).toUpperCase()}</div>
                     <div>
-                        <h4>Administrator</h4>
-                        <p>admin@cityreport.de</p>
+                        <h4>{currentUser?.name || "Benutzer"}</h4>
+                        <p>{currentUser?.email || "-"}</p>
                     </div>
                 </div>
             </div>
@@ -165,7 +152,7 @@ export default function Categories() {
                 <div className="categories-header">
                     <div>
                         <h1>Kategorienverwaltung</h1>
-                        <p>Verwalte Meldungskategorien, Prioritäten und Status.</p>
+                        <p>Verwalte echte Meldungskategorien aus der Datenbank.</p>
                     </div>
 
                     <button className="add-category-btn" onClick={() => setShowModal(true)}>
@@ -179,8 +166,8 @@ export default function Categories() {
                         <h2>{totals.total}</h2>
                     </div>
                     <div className="stat-card">
-                        <h4>Aktive Kategorien</h4>
-                        <h2>{totals.active}</h2>
+                        <h4>Verwendete Kategorien</h4>
+                        <h2>{totals.used}</h2>
                     </div>
                     <div className="stat-card">
                         <h4>Meldungen gesamt</h4>
@@ -196,15 +183,6 @@ export default function Categories() {
                         onChange={(e) => setSearch(e.target.value)}
                         className="search-input"
                     />
-
-                    <select
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                    >
-                        <option value="alle">Alle Status</option>
-                        <option value="aktiv">Aktiv</option>
-                        <option value="inaktiv">Inaktiv</option>
-                    </select>
                 </div>
 
                 <div className="table-card">
@@ -213,21 +191,31 @@ export default function Categories() {
                         <tr>
                             <th>Kategorie</th>
                             <th>Slug</th>
-                            <th>Priorität</th>
-                            <th>Status</th>
                             <th>Reports</th>
                             <th>Aktionen</th>
                         </tr>
                         </thead>
 
                         <tbody>
-                        {filtered.length === 0 && (
+                        {loading && (
                             <tr>
-                                <td colSpan="6">Keine Kategorien gefunden.</td>
+                                <td colSpan="4">⏳ Kategorien werden geladen...</td>
                             </tr>
                         )}
 
-                        {filtered.map((category) => (
+                        {!loading && error && (
+                            <tr>
+                                <td colSpan="4">❌ {error}</td>
+                            </tr>
+                        )}
+
+                        {!loading && !error && filtered.length === 0 && (
+                            <tr>
+                                <td colSpan="4">Keine Kategorien gefunden.</td>
+                            </tr>
+                        )}
+
+                        {!loading && !error && filtered.map((category) => (
                             <tr key={category.id}>
                                 <td>
                                     <div className="cat-name">{category.name}</div>
@@ -235,29 +223,17 @@ export default function Categories() {
                                 </td>
 
                                 <td>
-                                    <code className="slug-chip">{category.slug}</code>
+                                    <code className="slug-chip">{slugify(category.name)}</code>
                                 </td>
 
-                                <td>
-                                    <span className={`priority-badge ${category.priority.toLowerCase()}`}>
-                                        {category.priority}
-                                    </span>
-                                </td>
-
-                                <td>
-                                    <span className={`status-badge ${category.active ? "active" : "inactive"}`}>
-                                        {category.active ? "Aktiv" : "Inaktiv"}
-                                    </span>
-                                </td>
-
-                                <td>{category.reports}</td>
+                                <td>{category.report_count ?? 0}</td>
 
                                 <td>
                                     <button
                                         className="toggle-btn"
-                                        onClick={() => handleToggleActive(category.id)}
+                                        onClick={() => handleEdit(category)}
                                     >
-                                        {category.active ? "Deaktivieren" : "Aktivieren"}
+                                        Bearbeiten
                                     </button>
 
                                     <button
@@ -275,19 +251,19 @@ export default function Categories() {
             </div>
 
             {showModal && (
-                <div className="modal-overlay" onClick={() => !saving && setShowModal(false)}>
+                <div className="modal-overlay" onClick={() => !saving && resetModal()}>
                     <div className="modal-card" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header">
-                            <h3>🏷 Neue Kategorie</h3>
+                            <h3>{editingCategory ? "🏷 Kategorie bearbeiten" : "🏷 Neue Kategorie"}</h3>
                             <button
                                 className="modal-close"
-                                onClick={() => !saving && setShowModal(false)}
+                                onClick={() => !saving && resetModal()}
                             >
                                 ✕
                             </button>
                         </div>
 
-                        <p className="modal-subtitle">Lege eine neue Kategorie für eingehende Meldungen an.</p>
+                        <p className="modal-subtitle">Die Änderungen werden direkt in der Datenbank gespeichert.</p>
 
                         <form className="modal-form" onSubmit={handleCreate}>
                             <input
@@ -298,13 +274,6 @@ export default function Categories() {
                                 required
                             />
 
-                            <input
-                                type="text"
-                                placeholder="Slug (optional, z. B. road_damage)"
-                                value={form.slug}
-                                onChange={(e) => setForm((prev) => ({ ...prev, slug: e.target.value }))}
-                            />
-
                             <textarea
                                 placeholder="Beschreibung"
                                 value={form.description}
@@ -313,26 +282,17 @@ export default function Categories() {
                                 required
                             />
 
-                            <select
-                                value={form.priority}
-                                onChange={(e) => setForm((prev) => ({ ...prev, priority: e.target.value }))}
-                            >
-                                <option>Niedrig</option>
-                                <option>Mittel</option>
-                                <option>Hoch</option>
-                            </select>
-
                             <div className="modal-actions">
                                 <button
                                     type="button"
                                     className="btn-secondary"
-                                    onClick={() => !saving && setShowModal(false)}
+                                    onClick={() => !saving && resetModal()}
                                 >
                                     Abbrechen
                                 </button>
 
                                 <button className="btn-primary" type="submit" disabled={saving}>
-                                    {saving ? "Speichern..." : "Speichern"}
+                                    {saving ? "Speichern..." : editingCategory ? "Änderungen speichern" : "Speichern"}
                                 </button>
                             </div>
                         </form>
