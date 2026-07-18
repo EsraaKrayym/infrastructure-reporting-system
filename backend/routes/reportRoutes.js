@@ -2,6 +2,7 @@ import express from "express";
 import {
     createReport,
     getReports,
+    getReportPhoto,
     updatePriority,
     updateReport,
     updateReportStatus
@@ -16,6 +17,8 @@ const router = express.Router();
 
 // Citizen → eigene Reports sehen
 router.get("/my", verifyToken, requireRole(["citizen"]), getReports);
+
+router.get("/:id/photo", getReportPhoto);
 
 // Caseworker → alle Reports sehen
 router.get("/", verifyToken, requireRole(["admin","caseworker"]), getReports);

@@ -1,3 +1,5 @@
+import fs from "fs";
+import path from "path";
 import pool from "../config/db.js";
 
 const CATEGORY_ALIASES = {
@@ -65,6 +67,51 @@ const buildPhotoValue = (file) => {
     }
 
     return file.filename || null;
+};
+
+export const getReportPhoto = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const result = await pool.query(
+            "SELECT photo FROM reports WHERE id = $1 LIMIT 1",
+            [id]
+        );
+
+        if (result.rows.length === 0 || !result.rows[0].photo) {
+            return res.status(404).send("Photo not found");
+        }
+
+        const photo = String(result.rows[0].photo);
+
+        if (photo.startsWith("data:image/")) {
+            const match = photo.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+            if (!match) {
+                return res.status(400).send("Invalid image data");
+            }
+
+            const mimeType = match[1];
+            const buffer = Buffer.from(match[2], "base64");
+            res.setHeader("Content-Type", mimeType);
+            res.setHeader("Cache-Control", "public, max-age=3600");
+            return res.send(buffer);
+        }
+
+        if (/^https?:\/\//i.test(photo)) {
+            return res.redirect(photo);
+        }
+
+        const fileName = path.basename(photo);
+        const uploadPath = path.resolve(process.cwd(), "uploads", fileName);
+
+        if (fs.existsSync(uploadPath)) {
+            return res.sendFile(uploadPath);
+        }
+
+        return res.status(404).send("Photo file not available");
+    } catch (error) {
+        res.status(500).send(error.message);
+    }
 };
 
 /* =========================================

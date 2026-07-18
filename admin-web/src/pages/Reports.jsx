@@ -160,26 +160,19 @@ export default function Reports() {
         return report.title;
     };
 
-    const resolvePhotoUrl = (photo) => {
+    const resolvePhotoUrl = (report) => {
+        const photo = report?.photo;
         if (!photo) return null;
 
         if (photo.startsWith("data:image/")) {
             return photo;
         }
 
-        if (/^https?:\/\//i.test(photo)) {
+        if (photo.startsWith("http://") || photo.startsWith("https://")) {
             return photo;
         }
 
-        if (photo.startsWith("/uploads/")) {
-            return `${uploadBaseUrl}${photo}`;
-        }
-
-        if (photo.startsWith("uploads/")) {
-            return `${uploadBaseUrl}/${photo}`;
-        }
-
-        return `${uploadBaseUrl}/uploads/${photo}`;
+        return `${uploadBaseUrl}/api/reports/${report.id}/photo`;
     };
 
     return (
@@ -279,7 +272,7 @@ export default function Reports() {
 
                 <div className="reports-grid">
                     {reports.map((report) => {
-                        const photoUrl = resolvePhotoUrl(report.photo);
+                        const photoUrl = resolvePhotoUrl(report);
                         const imageBroken = !!brokenImages[report.id];
                         const description =
                             (report.description || "").trim() ||

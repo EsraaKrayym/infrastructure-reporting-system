@@ -189,7 +189,7 @@ export default function Dashboard({ token }) {
                             </section>
                         </div>
 
-                        <div className="content-grid two-columns">
+                        <div className="content-grid single-wide">
                             <section className="dashboard-card recent-card">
                                 <div className="section-head">
                                     <div>
@@ -223,30 +223,6 @@ export default function Dashboard({ token }) {
                                     {dashboardData.latestReports.length === 0 && (
                                         <p className="empty-text">Noch keine Reports vorhanden.</p>
                                     )}
-                                </div>
-                            </section>
-
-                            <section className="dashboard-card overview-card">
-                                <div className="section-head">
-                                    <div>
-                                        <h3>Kurzübersicht</h3>
-                                        <p>Wichtige Kennzahlen auf einen Blick</p>
-                                    </div>
-                                </div>
-
-                                <div className="overview-stack">
-                                    <div className="overview-item">
-                                        <span>Erledigt</span>
-                                        <strong>{dashboardData.completed}</strong>
-                                    </div>
-                                    <div className="overview-item">
-                                        <span>Offen</span>
-                                        <strong>{dashboardData.open}</strong>
-                                    </div>
-                                    <div className="overview-item">
-                                        <span>In Bearbeitung</span>
-                                        <strong>{dashboardData.inProgress}</strong>
-                                    </div>
                                 </div>
                             </section>
                         </div>

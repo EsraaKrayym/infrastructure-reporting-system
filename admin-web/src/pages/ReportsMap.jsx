@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { getReports } from "../services/api";
+import API, { getReports } from "../services/api";
 
 import { Link } from "react-router-dom";
 
@@ -13,6 +13,14 @@ import L from "leaflet";
 
 import "leaflet/dist/leaflet.css";
 import "../css/ReportsMap.css";
+
+const uploadBaseUrl = API.defaults.baseURL.replace(/\/api$/, "");
+
+const getPhotoUrl = (report) => {
+    if (!report?.photo) return null;
+    if (String(report.photo).startsWith("data:image/")) return report.photo;
+    return `${uploadBaseUrl}/api/reports/${report.id}/photo`;
+};
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -325,6 +333,13 @@ export default function ReportsMap({ token }) {
                                         <p><strong>Status:</strong> {report.status || "-"}</p>
                                         <p><strong>Kategorie:</strong> {report.category || "-"}</p>
                                         <p><strong>Adresse:</strong> {report.address || "-"}</p>
+                                        {getPhotoUrl(report) && (
+                                            <img
+                                                src={getPhotoUrl(report)}
+                                                alt={report.title || `Meldung #${report.id}`}
+                                                style={{ width: "100%", marginTop: 8, borderRadius: 10 }}
+                                            />
+                                        )}
 
                                     </Popup>
 
