@@ -5,6 +5,25 @@ import "../css/Statistics.css";
 
 const formatPercent = (value) => `${Math.round(value)}%`;
 
+const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
+    const angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180.0;
+    return {
+        x: centerX + radius * Math.cos(angleInRadians),
+        y: centerY + radius * Math.sin(angleInRadians),
+    };
+};
+
+const describeArc = (x, y, radius, startAngle, endAngle) => {
+    const start = polarToCartesian(x, y, radius, endAngle);
+    const end = polarToCartesian(x, y, radius, startAngle);
+    const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
+
+    return [
+        "M", start.x, start.y,
+        "A", radius, radius, 0, largeArcFlag, 0, end.x, end.y,
+    ].join(" ");
+};
+
 const normalizeStatus = (status) => {
     const normalized = String(status || "").toLowerCase();
     if (["neu", "open", "pending", "new"].includes(normalized)) return "Neu";
@@ -83,9 +102,20 @@ export default function Statistics() {
             return { label: priorityLabel(level), count, percentage: total === 0 ? 0 : (count / total) * 100 };
         });
 
-        const latestReports = [...reports]
-            .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
-            .slice(0, 6);
+        const statusChart = [];
+        let currentAngle = 0;
+        const statusPalette = ["#2563eb", "#7c3aed", "#f59e0b", "#16a34a", "#dc2626"];
+
+        byStatus.forEach((item, index) => {
+            const angle = total === 0 ? 0 : (item.count / total) * 360;
+            const nextAngle = currentAngle + angle;
+            statusChart.push({
+                ...item,
+                color: statusPalette[index % statusPalette.length],
+                path: angle > 0 ? describeArc(80, 80, 58, currentAngle, nextAngle) : "",
+            });
+            currentAngle = nextAngle;
+        });
 
         return {
             total,
@@ -98,9 +128,9 @@ export default function Statistics() {
             highPriority,
             completionRate,
             byStatus,
+            statusChart,
             topCategories,
             priorityMap,
-            latestReports,
         };
     }, [reports]);
 
@@ -178,18 +208,43 @@ export default function Statistics() {
                                     <h3>Statusverteilung</h3>
                                     <span>{stats.total} Meldungen</span>
                                 </div>
-                                <div className="bar-list">
-                                    {stats.byStatus.map((item) => (
-                                        <div key={item.label} className="bar-row">
-                                            <div className="bar-row-labels">
-                                                <span>{item.label}</span>
-                                                <strong>{item.count}</strong>
-                                            </div>
-                                            <div className="bar-track">
-                                                <div className="bar-fill blue" style={{ width: `${item.percentage}%` }} />
-                                            </div>
+                                <div className="status-chart-layout">
+                                    <div className="donut-chart-card">
+                                        <svg viewBox="0 0 160 160" className="donut-chart" aria-label="Statusdiagramm">
+                                            <circle cx="80" cy="80" r="58" fill="none" stroke="#e2e8f0" strokeWidth="18" />
+                                            {stats.statusChart.map((item) => (
+                                                item.path ? (
+                                                    <path
+                                                        key={item.label}
+                                                        d={item.path}
+                                                        fill="none"
+                                                        stroke={item.color}
+                                                        strokeWidth="18"
+                                                        strokeLinecap="round"
+                                                    />
+                                                ) : null
+                                            ))}
+                                        </svg>
+                                        <div className="donut-chart-center">
+                                            <strong>{formatPercent(stats.completionRate)}</strong>
+                                            <span>Erledigt</span>
                                         </div>
-                                    ))}
+                                    </div>
+
+                                    <div className="status-legend">
+                                        {stats.byStatus.map((item, index) => (
+                                            <div key={item.label} className="legend-item">
+                                                <span
+                                                    className="legend-color"
+                                                    style={{ backgroundColor: stats.statusChart[index]?.color || "#94a3b8" }}
+                                                />
+                                                <div>
+                                                    <strong>{item.label}</strong>
+                                                    <p>{item.count} Meldungen · {formatPercent(item.percentage)}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             </section>
 
@@ -229,35 +284,22 @@ export default function Statistics() {
                                 <div className="card-head">
                                     <h3>Prioritäten</h3>
                                 </div>
-                                <div className="priority-pills">
+                                <div className="priority-chart-grid">
                                     {stats.priorityMap.map((item) => (
-                                        <div key={item.label} className="priority-pill-card">
-                                            <span>{item.label}</span>
-                                            <strong>{item.count}</strong>
+                                        <div key={item.label} className="priority-chart-card">
+                                            <div className="priority-chart-head">
+                                                <span>{item.label}</span>
+                                                <strong>{item.count}</strong>
+                                            </div>
+                                            <div className="priority-vertical-track">
+                                                <div
+                                                    className="priority-vertical-fill"
+                                                    style={{ height: `${Math.max(item.percentage, item.count > 0 ? 14 : 0)}%` }}
+                                                />
+                                            </div>
                                             <small>{formatPercent(item.percentage)}</small>
                                         </div>
                                     ))}
-                                </div>
-                            </section>
-
-                            <section className="statistics-card wide">
-                                <div className="card-head">
-                                    <h3>Letzte Meldungen</h3>
-                                </div>
-                                <div className="latest-report-list">
-                                    {stats.latestReports.map((report) => (
-                                        <article key={report.id} className="latest-report-item">
-                                            <div>
-                                                <h4>{report.title || `Meldung #${report.id}`}</h4>
-                                                <p>{report.address || report.description || "Keine Zusatzinformationen"}</p>
-                                            </div>
-                                            <div className="latest-report-meta">
-                                                <span>{report.category || "-"}</span>
-                                                <strong>{normalizeStatus(report.status)}</strong>
-                                            </div>
-                                        </article>
-                                    ))}
-                                    {stats.latestReports.length === 0 && <p>Keine Reports vorhanden.</p>}
                                 </div>
                             </section>
                         </div>
