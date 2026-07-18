@@ -11,7 +11,10 @@ export const login = async (req, res) => {
         const defaultAdminName = process.env.DEFAULT_ADMIN_NAME || "Administrator";
 
         let result = await pool.query(
-            "SELECT * FROM users WHERE email = $1",
+            `SELECT u.*, r.name AS role
+             FROM users u
+             LEFT JOIN roles r ON r.id = u.role_id
+             WHERE u.email = $1`,
             [email]
         );
 
@@ -20,19 +23,28 @@ export const login = async (req, res) => {
             const hashedDefaultPassword = await bcrypt.hash(defaultAdminPassword, 10);
 
             await pool.query(
-                `INSERT INTO users (name, email, password, role, blocked)
-                 VALUES ($1, $2, $3, 'admin', false)
+                `INSERT INTO users (name, email, password, role_id, blocked)
+                 VALUES (
+                    $1,
+                    $2,
+                    $3,
+                    (SELECT id FROM roles WHERE name = 'admin' LIMIT 1),
+                    false
+                 )
                  ON CONFLICT (email)
                  DO UPDATE SET
                     name = EXCLUDED.name,
                     password = EXCLUDED.password,
-                    role = 'admin',
+                    role_id = (SELECT id FROM roles WHERE name = 'admin' LIMIT 1),
                     blocked = false`,
                 [defaultAdminName, defaultAdminEmail, hashedDefaultPassword]
             );
 
             result = await pool.query(
-                "SELECT * FROM users WHERE email = $1",
+                `SELECT u.*, r.name AS role
+                 FROM users u
+                 LEFT JOIN roles r ON r.id = u.role_id
+                 WHERE u.email = $1`,
                 [email]
             );
         }
@@ -70,7 +82,7 @@ export const login = async (req, res) => {
         }
 
         const token = jwt.sign(
-            { id: user.id, role: user.role },
+            { id: user.id, role: user.role || "citizen" },
             process.env.JWT_SECRET || "supersecretkey",
             { expiresIn: "1d" }
         );
@@ -81,7 +93,7 @@ export const login = async (req, res) => {
                 id: user.id,
                 name: user.name,
                 email: user.email,
-                role: user.role
+                role: user.role || "citizen"
             }
         });
 
@@ -93,6 +105,11 @@ export const login = async (req, res) => {
 export const register = async (req, res) => {
     try {
         const { name, email, password, role } = req.body;
+
+        const allowedRoles = ["citizen", "caseworker", "admin"];
+        const normalizedRole = allowedRoles.includes(String(role || "").toLowerCase())
+            ? String(role).toLowerCase()
+            : "citizen";
 
         const existingUser = await pool.query(
             "SELECT * FROM users WHERE email = $1",
@@ -106,10 +123,16 @@ export const register = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const result = await pool.query(
-            `INSERT INTO users (name, email, password,role, blocked)
-             VALUES ($1, $2, $3,$4,$5)
+            `INSERT INTO users (name, email, password, role_id, blocked)
+             VALUES (
+                 $1,
+                 $2,
+                 $3,
+                 (SELECT id FROM roles WHERE name = $4 LIMIT 1),
+                 false
+             )
              RETURNING id`,
-            [name, email, hashedPassword,"citizen",false]
+            [name, email, hashedPassword, normalizedRole]
         );
 
         res.status(201).json({

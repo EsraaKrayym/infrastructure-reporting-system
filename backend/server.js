@@ -34,13 +34,19 @@ const ensureDefaultAdmin = async () => {
         const hashedPassword = await bcrypt.hash(adminPassword, 10);
 
         await pool.query(
-            `INSERT INTO users (name, email, password, role, blocked)
-             VALUES ($1, $2, $3, 'admin', false)
+            `INSERT INTO users (name, email, password, role_id, blocked)
+             VALUES (
+                 $1,
+                 $2,
+                 $3,
+                 (SELECT id FROM roles WHERE name = 'admin' LIMIT 1),
+                 false
+             )
              ON CONFLICT (email)
              DO UPDATE SET
                  name = EXCLUDED.name,
                  password = EXCLUDED.password,
-                 role = 'admin',
+                 role_id = (SELECT id FROM roles WHERE name = 'admin' LIMIT 1),
                  blocked = false`,
             [adminName, adminEmail, hashedPassword]
         );

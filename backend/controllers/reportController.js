@@ -1,5 +1,60 @@
 import pool from "../config/db.js";
 
+const CATEGORY_ALIASES = {
+    road_damage: "Straßenschäden",
+    street_light: "Beleuchtung",
+    waste: "Müll",
+    other: "Sonstiges",
+    "müll & sauberkeit": "Müll",
+};
+
+const STATUS_ALIASES = {
+    new: "Neu",
+    neu: "Neu",
+    in_review: "In Prüfung",
+    "in prüfung": "In Prüfung",
+    in_progress: "In Bearbeitung",
+    "in bearbeitung": "In Bearbeitung",
+    done: "Erledigt",
+    repaired: "Erledigt",
+    fixed: "Erledigt",
+    completed: "Erledigt",
+    rejected: "Abgelehnt",
+    declined: "Abgelehnt",
+    abgelehnt: "Abgelehnt",
+};
+
+const REPORT_SELECT = `
+    SELECT
+        r.id,
+        r.title,
+        r.description,
+        r.category_id,
+        c.name AS category,
+        r.latitude,
+        r.longitude,
+        r.user_id,
+        r.status_id,
+        s.name AS status,
+        r.priority,
+        r.address,
+        r.photo,
+        r.created_at
+    FROM reports r
+    LEFT JOIN categories c ON c.id = r.category_id
+    LEFT JOIN report_statuses s ON s.id = r.status_id
+`;
+
+const normalizeCategoryName = (rawCategory) => {
+    const key = String(rawCategory || "").trim().toLowerCase();
+    return CATEGORY_ALIASES[key] || String(rawCategory || "").trim();
+};
+
+const normalizeStatusName = (rawStatus) => {
+    const key = String(rawStatus || "").trim().toLowerCase();
+    return STATUS_ALIASES[key] || String(rawStatus || "").trim();
+};
+
 /* =========================================
    CREATE REPORT (Citizen)
 ========================================= */
@@ -23,20 +78,55 @@ export const createReport = async (req, res) => {
             });
         }
 
+        const normalizedCategory = normalizeCategoryName(category);
+        const normalizedPriority = String(priority || "medium").toLowerCase();
+        const allowedPriorities = ["low", "medium", "high"];
+
+        if (!allowedPriorities.includes(normalizedPriority)) {
+            return res.status(400).json({ message: "Invalid priority" });
+        }
+
+        const categoryResult = await pool.query(
+            `SELECT id, name
+             FROM categories
+             WHERE LOWER(name) = LOWER($1)
+             LIMIT 1`,
+            [normalizedCategory]
+        );
+
+        if (categoryResult.rows.length === 0) {
+            return res.status(400).json({
+                message: "Invalid category"
+            });
+        }
+
+        const statusResult = await pool.query(
+            `SELECT id
+             FROM report_statuses
+             WHERE LOWER(name) = LOWER('Neu')
+             LIMIT 1`
+        );
+
+        if (statusResult.rows.length === 0) {
+            return res.status(500).json({
+                message: "Default status 'Neu' is missing"
+            });
+        }
+
         const result = await pool.query(
             `INSERT INTO reports
-            (title, description, category, latitude, longitude, user_id, status, priority, address, photo)
+            (title, description, category_id, latitude, longitude, user_id, status_id, priority, address, photo)
             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
             RETURNING id`,
             [
                 title,
                 description || "Keine Beschreibung",
-                category,
+                categoryResult.rows[0].id,
                 latitude,
                 longitude,
                 req.user.id,
-                "Neu",
-                priority || "medium",
+                statusResult.rows[0].id,
+                normalizedPriority,
                 address || null,
                 photo
             ]
@@ -62,7 +152,9 @@ export const getReports = async (req, res) => {
 
         if (req.user.role === "citizen") {
             const result = await pool.query(
-                "SELECT * FROM reports WHERE user_id = $1 ORDER BY created_at DESC",
+                `${REPORT_SELECT}
+                 WHERE r.user_id = $1
+                 ORDER BY r.created_at DESC`,
                 [req.user.id]
             );
             return res.json(result.rows);
@@ -72,7 +164,8 @@ export const getReports = async (req, res) => {
             req.user.role === "caseworker" ||
             req.user.role === "admin") {
             const result = await pool.query(
-                "SELECT * FROM reports ORDER BY created_at DESC"
+                `${REPORT_SELECT}
+                 ORDER BY r.created_at DESC`
             );
             return res.json(result.rows);
         }
@@ -97,8 +190,13 @@ export const updateReportStatus = async (req, res) => {
             return res.status(403).json({ message: "Caseworker access required" });
         }
 
+        const normalizedStatus = normalizeStatusName(status);
+
         const result = await pool.query(
-            "SELECT status FROM reports WHERE id = $1",
+            `SELECT r.id, r.status_id, s.name AS status
+             FROM reports r
+             LEFT JOIN report_statuses s ON s.id = r.status_id
+             WHERE r.id = $1`,
             [id]
         );
 
@@ -108,18 +206,34 @@ export const updateReportStatus = async (req, res) => {
 
         const oldStatus = result.rows[0].status;
 
+        const statusResult = await pool.query(
+            `SELECT id, name
+             FROM report_statuses
+             WHERE LOWER(name) = LOWER($1)
+             LIMIT 1`,
+            [normalizedStatus]
+        );
+
+        if (statusResult.rows.length === 0) {
+            return res.status(400).json({ message: "Invalid status" });
+        }
+
+        const newStatus = statusResult.rows[0].name;
+
         await pool.query(
-            "UPDATE reports SET status = $1 WHERE id = $2",
-            [status, id]
+            "UPDATE reports SET status_id = $1 WHERE id = $2",
+            [statusResult.rows[0].id, id]
         );
 
         await pool.query(
-            `INSERT INTO audit_logs (report_id, changed_by, action)
-             VALUES ($1,$2,$3)`,
+            `INSERT INTO audit_logs (report_id, changed_by, action, old_value, new_value)
+             VALUES ($1,$2,$3,$4,$5)`,
             [
                 id,
                 req.user.id,
-                `Status changed from ${oldStatus} to ${status}`
+                `Status changed from ${oldStatus} to ${newStatus}`,
+                oldStatus,
+                newStatus,
             ]
         );
 
@@ -143,15 +257,38 @@ export const updatePriority = async (req, res) => {
             return res.status(403).json({ message: "Caseworker access required" });
         }
 
+        const allowedPriorities = ["low", "medium", "high"];
+        if (!allowedPriorities.includes(String(priority || "").toLowerCase())) {
+            return res.status(400).json({ message: "Invalid priority" });
+        }
+
+        const oldPriorityResult = await pool.query(
+            "SELECT priority FROM reports WHERE id = $1",
+            [id]
+        );
+
+        if (oldPriorityResult.rows.length === 0) {
+            return res.status(404).json({ message: "Report not found" });
+        }
+
+        const oldPriority = oldPriorityResult.rows[0].priority;
+        const newPriority = String(priority).toLowerCase();
+
         await pool.query(
             "UPDATE reports SET priority = $1 WHERE id = $2",
-            [priority, id]
+            [newPriority, id]
         );
 
         await pool.query(
-            `INSERT INTO audit_logs (report_id, changed_by, action)
-             VALUES ($1,$2,$3)`,
-            [id, req.user.id, `Priority changed to ${priority}`]
+            `INSERT INTO audit_logs (report_id, changed_by, action, old_value, new_value)
+             VALUES ($1,$2,$3,$4,$5)`,
+            [
+                id,
+                req.user.id,
+                `Priority changed from ${oldPriority} to ${newPriority}`,
+                oldPriority,
+                newPriority,
+            ]
         );
 
         res.json({ message: "Priority updated" });

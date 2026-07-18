@@ -4,26 +4,20 @@ import bcrypt from "bcryptjs";
 // Alle User holen (Admin)
 export const getAllUsers = async (req, res) => {
     try {
-        let result;
-
-        try {
-            result = await pool.query(
-                "SELECT id, name, email, role, blocked, created_at FROM users ORDER BY created_at DESC, id DESC"
-            );
-        } catch (queryErr) {
-            const isMissingCreatedAt =
-                queryErr?.code === "42703" &&
-                String(queryErr?.message || "").toLowerCase().includes("created_at");
-
-            if (!isMissingCreatedAt) {
-                throw queryErr;
-            }
-
-            // Fallback für ältere Datenbanken ohne created_at-Spalte
-            result = await pool.query(
-                "SELECT id, name, email, role, blocked, NULL::timestamp AS created_at FROM users ORDER BY id DESC"
-            );
-        }
+        const result = await pool.query(
+            `SELECT
+                u.id,
+                u.name,
+                u.email,
+                u.blocked,
+                u.created_at,
+                u.role_id,
+                r.name AS role,
+                r.description AS role_description
+             FROM users u
+             LEFT JOIN roles r ON r.id = u.role_id
+             ORDER BY u.created_at DESC, u.id DESC`
+        );
 
         res.json(result.rows);
     } catch (err) {
@@ -109,15 +103,36 @@ export const createCaseworker = async (req, res) => {
         const fullName = `${String(firstName).trim()} ${String(lastName).trim()}`.trim();
 
         const result = await pool.query(
-            `INSERT INTO users (name, email, password, role, blocked)
-             VALUES ($1, $2, $3, $4, false)
-             RETURNING id, name, email, role, blocked`,
+            `INSERT INTO users (name, email, password, role_id, blocked)
+             VALUES (
+                 $1,
+                 $2,
+                 $3,
+                 (SELECT id FROM roles WHERE name = $4 LIMIT 1),
+                 false
+             )
+             RETURNING id, name, email, role_id, blocked`,
             [fullName, String(email).trim().toLowerCase(), hashedPassword, normalizedRole]
         );
 
+        const createdUser = result.rows[0];
+        const roleResult = await pool.query(
+            "SELECT name, description FROM roles WHERE id = $1",
+            [createdUser.role_id]
+        );
+        const createdRole = roleResult.rows[0] || null;
+
         res.status(201).json({
             message: "Benutzer erfolgreich erstellt",
-            user: result.rows[0]
+            user: {
+                id: createdUser.id,
+                name: createdUser.name,
+                email: createdUser.email,
+                blocked: createdUser.blocked,
+                role_id: createdUser.role_id,
+                role: createdRole?.name || normalizedRole,
+                role_description: createdRole?.description || null,
+            }
         });
     } catch (err) {
         res.status(500).json({ message: err.message });

@@ -17,7 +17,10 @@ export const verifyToken = async (req, res, next) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
         const userResult = await pool.query(
-            "SELECT id, role, blocked FROM users WHERE id = $1",
+            `SELECT u.id, u.blocked, r.name AS role
+             FROM users u
+             LEFT JOIN roles r ON r.id = u.role_id
+             WHERE u.id = $1`,
             [decoded.id]
         );
 
@@ -33,7 +36,7 @@ export const verifyToken = async (req, res, next) => {
 
         req.user = {
             id: user.id,
-            role: user.role,
+            role: user.role || "citizen",
         };
         next();
     } catch (err) {
