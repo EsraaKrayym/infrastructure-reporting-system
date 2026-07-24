@@ -88,7 +88,6 @@ export default function MapScreen() {
 
   const [reports, setReports] = useState<any[]>([]);
   const [userLocation, setUserLocation] = useState<any>(null);
-  const [showHint, setShowHint] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -155,7 +154,6 @@ export default function MapScreen() {
     setCategory("road_damage");
     setPriority("medium");
     setPhoto(null);
-    setShowHint(false);
     if (!reportLocation && userLocation) {
       setReportLocation({ latitude: userLocation.latitude, longitude: userLocation.longitude });
     }
@@ -266,19 +264,6 @@ export default function MapScreen() {
     if (!result.canceled) {
       const uri = result.assets?.[0]?.uri;
       if (uri) setPhoto(uri);
-    }
-  };
-
-  const getPriorityColor = (p: string) => {
-    switch (p) {
-      case "high":
-        return "#dc2626";
-      case "medium":
-        return "#f97316";
-      case "low":
-        return "#16a34a";
-      default:
-        return "#2563eb";
     }
   };
 

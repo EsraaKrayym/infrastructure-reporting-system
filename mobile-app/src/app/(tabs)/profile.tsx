@@ -39,6 +39,7 @@ export default function ProfileTab() {
   const [reportStats, setReportStats] = useState({ total: 0, inProgress: 0 });
   const [pendingCount, setPendingCount] = useState(0);
   const [lastSync, setLastSync] = useState<string>("-");
+  const [isBlocked, setIsBlocked] = useState(false);
 
   const userName = displayName || auth?.user?.name || "Benutzer";
   const userEmail = email || auth?.user?.email || "-";
@@ -62,6 +63,7 @@ export default function ProfileTab() {
 
           setDisplayName(user?.name || "");
           setEmail(user?.email || "");
+          setIsBlocked(user?.blocked || false);
           await auth?.updateUser?.(user || null);
 
           const reportList = Array.isArray(reports) ? reports : [];
@@ -81,7 +83,7 @@ export default function ProfileTab() {
       };
 
       load();
-    }, [token, auth])
+    }, [token])
   );
 
   const roleLabel = useMemo(() => {
@@ -189,9 +191,11 @@ export default function ProfileTab() {
         <Text style={styles.subtitle}>Profilübersicht und Kontoverwaltung</Text>
 
         <View style={styles.badgeRow}>
-          <View style={styles.badge}>
-            <MaterialIcons name="verified" size={16} color="#166534" />
-            <Text style={styles.badgeText}>Aktiv</Text>
+          <View style={isBlocked ? styles.badgeBlocked : styles.badge}>
+            <MaterialIcons name={isBlocked ? "block" : "verified"} size={16} color={isBlocked ? "#991b1b" : "#166534"} />
+            <Text style={isBlocked ? styles.badgeBlockedText : styles.badgeText}>
+              {isBlocked ? "Blockiert" : "Aktiv"}
+            </Text>
           </View>
 
           <View style={styles.badgeMuted}>
@@ -391,6 +395,15 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: "#DCFCE7",
   },
+  badgeBlocked: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: "#FEE2E2",
+  },
   badgeMuted: {
     flexDirection: "row",
     alignItems: "center",
@@ -402,6 +415,10 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     color: "#166534",
+    fontWeight: "700",
+  },
+  badgeBlockedText: {
+    color: "#991b1b",
     fontWeight: "700",
   },
   badgeMutedText: {
