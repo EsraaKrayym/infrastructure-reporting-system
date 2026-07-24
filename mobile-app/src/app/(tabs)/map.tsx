@@ -16,6 +16,48 @@ import { AuthContext } from "@/context/AuthContext";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 
+const getCategoryIconName = (category: string): string => {
+  const key = String(category || "").toLowerCase().replace(/\s/g, "_");
+  switch (key) {
+    case "road_damage":
+    case "straßenschäden":
+    case "strassenschaden":
+      return "engineering";
+    case "street_light":
+    case "beleuchtung":
+      return "emoji-objects";
+    case "waste":
+    case "müll":
+    case "mull":
+    case "müll_&_sauberkeit":
+    case "mull_&_sauberkeit":
+      return "recycling";
+    default:
+      return "help-outline";
+  }
+};
+
+const getCategoryColor = (category: string): string => {
+  const key = String(category || "").toLowerCase().replace(/\s/g, "_");
+  switch (key) {
+    case "road_damage":
+    case "straßenschäden":
+    case "strassenschaden":
+      return "#dc2626";
+    case "street_light":
+    case "beleuchtung":
+      return "#f59e0b";
+    case "waste":
+    case "müll":
+    case "mull":
+    case "müll_&_sauberkeit":
+    case "mull_&_sauberkeit":
+      return "#16a34a";
+    default:
+      return "#6366f1";
+  }
+};
+
 const CATEGORY_OPTIONS = [
   { value: "road_damage", label: "Straßenschäden" },
   { value: "street_light", label: "Beleuchtung" },
@@ -51,11 +93,13 @@ export default function MapScreen() {
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [address, setAddress] = useState("");
+  const [reportLocation, setReportLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("road_damage");
   const [priority, setPriority] = useState("medium");
   const [photo, setPhoto] = useState<string | null>(null);
   const [selectedReport, setSelectedReport] = useState<any>(null);
+  const [locating, setLocating] = useState(false);
 
   const selectedCategoryLabel =
     CATEGORY_OPTIONS.find((item) => item.value === category)?.label || "Infrastrukturmeldung";
@@ -91,7 +135,19 @@ export default function MapScreen() {
   const loadReports = async () => {
     if (!token) return;
     const data = await getReports(token);
-    setReports(Array.isArray(data) ? data : data.reports || []);
+    const rawReports = Array.isArray(data) ? data : data.reports || [];
+    const normalizedReports = rawReports
+      .map((report: any) => ({
+        ...report,
+        latitude: Number(report?.latitude),
+        longitude: Number(report?.longitude),
+      }))
+      .filter(
+        (report: any) => Number.isFinite(report.latitude) && Number.isFinite(report.longitude)
+      );
+
+    setReports(normalizedReports);
+    return normalizedReports;
   };
 
   const openCreateReportModal = () => {
@@ -100,11 +156,42 @@ export default function MapScreen() {
     setPriority("medium");
     setPhoto(null);
     setShowHint(false);
+    if (!reportLocation && userLocation) {
+      setReportLocation({ latitude: userLocation.latitude, longitude: userLocation.longitude });
+    }
     setShowModal(true);
   };
 
+  const resolveLocationFromSearch = async () => {
+    if (reportLocation) return reportLocation;
+
+    if (search.trim()) {
+      const suggestions = await fetchSearchSuggestions(search);
+      const first = suggestions?.[0];
+      if (first?.lat && first?.lon) {
+        const lat = Number.parseFloat(first.lat);
+        const lon = Number.parseFloat(first.lon);
+        if (Number.isFinite(lat) && Number.isFinite(lon)) {
+          const addr = first.address || {};
+          const line1 = [addr.road, addr.house_number].filter(Boolean).join(" ");
+          const line2 = [addr.postcode, addr.city || addr.town || addr.village || addr.county].filter(Boolean).join(" ");
+          const fullAddress = [line1, line2].filter(Boolean).join(", ") || first.display_name;
+          setAddress(fullAddress);
+          setReportLocation({ latitude: lat, longitude: lon });
+          return { latitude: lat, longitude: lon };
+        }
+      }
+    }
+
+    return userLocation || null;
+  };
+
   const sendReport = async () => {
-    if (!userLocation) return;
+    const loc = await resolveLocationFromSearch();
+    if (!loc) {
+      alert("Standort wird noch ermittelt. Bitte kurz warten.");
+      return;
+    }
 
     if (!token) {
       alert("Bitte melden Sie sich an");
@@ -117,8 +204,8 @@ export default function MapScreen() {
       description,
       priority,
       address,
-      latitude: userLocation.latitude,
-      longitude: userLocation.longitude,
+      latitude: loc.latitude,
+      longitude: loc.longitude,
       photo: photo || undefined,
     };
 
@@ -127,6 +214,23 @@ export default function MapScreen() {
 
       if (result?.offline) {
         alert("Report offline gespeichert. Er wird gesendet, sobald die Verbindung wiederhergestellt ist.");
+
+        const tempId = `offline-${Date.now()}`;
+        setReports((prev) => [
+          {
+            id: tempId,
+            title: selectedCategoryLabel,
+            description,
+            category,
+            status: "Neu",
+            priority,
+            latitude: Number(loc.latitude),
+            longitude: Number(loc.longitude),
+            address,
+            created_at: new Date().toISOString(),
+          },
+          ...prev,
+        ]);
       } else {
         alert("Report erfolgreich gesendet");
       }
@@ -136,7 +240,19 @@ export default function MapScreen() {
       setPriority("medium");
       setPhoto(null);
       setShowModal(false);
-      await loadReports();
+
+      const refreshed = await loadReports();
+      const createdId = result?.id;
+      const createdReport = createdId
+        ? (refreshed || []).find((item: any) => String(item.id) === String(createdId))
+        : null;
+
+      mapRef.current?.animateToRegion({
+        latitude: Number(createdReport?.latitude ?? loc.latitude),
+        longitude: Number(createdReport?.longitude ?? loc.longitude),
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      });
     } catch (error: any) {
       alert(error?.message || "Fehler beim Senden");
     }
@@ -174,15 +290,41 @@ export default function MapScreen() {
     }
 
     try {
-      const response = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(trimmed)}&limit=5`,
+      const runSearch = async (q: string) => {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=de&addressdetails=1&limit=6`,
           {
-            headers: { "User-Agent": "InfrastructureReportingApp/1.0" },
+            headers: {
+              "User-Agent": "InfrastructureReportingApp/1.0",
+              "Accept-Language": "de-DE,de,en",
+            },
           }
-      );
+        );
 
-      const data = await response.json();
-      const results = Array.isArray(data) ? data : [];
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
+      };
+
+      let results = await runSearch(trimmed);
+
+      if (results.length === 0) {
+        const postalMatch = trimmed.match(/\b\d{5}\b/);
+        if (postalMatch) {
+          const plz = postalMatch[0];
+          const rest = trimmed.replace(plz, "").replace(/\s+/g, " ").replace(/\s,|,\s/g, ", ").trim();
+
+          // Fallback 1: "10115 Berlin" / "10115 Musterstraße 1"
+          if (rest) {
+            results = await runSearch(`${plz} ${rest}`.trim());
+          }
+
+          // Fallback 2: Nur PLZ, falls Nutzer sehr spezifisch oder ungewöhnlich tippt
+          if (results.length === 0) {
+            results = await runSearch(plz);
+          }
+        }
+      }
+
       setSearchResults(results);
       return results;
     } catch {
@@ -192,17 +334,24 @@ export default function MapScreen() {
   };
 
   const selectSearchResult = (result: any) => {
-    setSearch(result.display_name);
+    const addr = result.address || {};
+    const road = [addr.road, addr.house_number].filter(Boolean).join(" ");
+    const city = addr.city || addr.town || addr.village || addr.county || "";
+    const fullAddress = [road, city].filter(Boolean).join(", ") || result.display_name.split(",")[0];
+    setSearch(fullAddress);
+    setAddress(fullAddress);
     setSearchResults([]);
 
     const lat = parseFloat(result.lat);
     const lon = parseFloat(result.lon);
 
+    setReportLocation({ latitude: lat, longitude: lon });
+
     mapRef.current?.animateToRegion({
       latitude: lat,
       longitude: lon,
-      latitudeDelta: 0.05,
-      longitudeDelta: 0.05,
+      latitudeDelta: 0.01,
+      longitudeDelta: 0.01,
     });
   };
 
@@ -232,7 +381,10 @@ export default function MapScreen() {
 
     if (result.length > 0) {
       const place = result[0];
-      setAddress(`${place.street || ""} ${place.name || ""}`.trim());
+      const street = [place.street, place.streetNumber].filter(Boolean).join(" ");
+      const cityPart = [place.postalCode, place.city || place.district].filter(Boolean).join(" ");
+      const resolvedAddress = [street, cityPart].filter(Boolean).join(", ").trim();
+      setAddress(resolvedAddress || place.name || "");
     }
 
     mapRef.current?.animateToRegion({
@@ -241,6 +393,32 @@ export default function MapScreen() {
       latitudeDelta: 0.05,
       longitudeDelta: 0.05,
     });
+  };
+
+  const refreshModalLocation = async () => {
+    if (isWeb) return;
+    setLocating(true);
+    try {
+      const location = await Location.getCurrentPositionAsync({});
+      setReportLocation({ latitude: location.coords.latitude, longitude: location.coords.longitude });
+
+      const result = await Location.reverseGeocodeAsync({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      });
+
+      if (result.length > 0) {
+        const place = result[0];
+        const street = [place.street, place.streetNumber].filter(Boolean).join(" ");
+        const cityPart = [place.postalCode, place.city || place.district].filter(Boolean).join(" ");
+        const resolvedAddress = [street, cityPart].filter(Boolean).join(", ").trim();
+        setAddress(resolvedAddress || place.name || "");
+      }
+    } catch {
+      // ignore
+    } finally {
+      setLocating(false);
+    }
   };
 
   // Für Web sollte dieses File eigentlich nicht gerendert werden (map.web.tsx übernimmt).
@@ -283,17 +461,25 @@ export default function MapScreen() {
 
           {searchResults.length > 0 && (
               <View style={styles.searchResults}>
-                {searchResults.map((result) => (
-                    <TouchableOpacity
-                        key={result.place_id}
-                        style={styles.searchResultItem}
-                        onPress={() => selectSearchResult(result)}
-                    >
-                      <Text style={styles.searchResultText} numberOfLines={2}>
-                        {result.display_name}
-                      </Text>
-                    </TouchableOpacity>
-                ))}
+                {searchResults.map((result) => {
+                    const addr = result.address || {};
+                    const line1 = [addr.road, addr.house_number].filter(Boolean).join(" ") || result.name || "";
+                    const line2 = [addr.postcode, addr.city || addr.town || addr.village || addr.county].filter(Boolean).join(" ");
+                    return (
+                        <TouchableOpacity
+                            key={result.place_id}
+                            style={styles.searchResultItem}
+                            onPress={() => selectSearchResult(result)}
+                        >
+                          <Text style={styles.searchResultTitle} numberOfLines={1}>
+                            {line1 || result.display_name.split(",")[0]}
+                          </Text>
+                          {!!line2 && (
+                            <Text style={styles.searchResultSub} numberOfLines={1}>{line2}</Text>
+                          )}
+                        </TouchableOpacity>
+                    );
+                })}
               </View>
           )}
         </View>
@@ -302,7 +488,7 @@ export default function MapScreen() {
             ref={mapRef}
             style={styles.map}
             showsUserLocation={true}
-            followsUserLocation={true}
+            followsUserLocation={false}
             initialRegion={{
               latitude: 52.52,
               longitude: 13.405,
@@ -321,16 +507,21 @@ export default function MapScreen() {
               />
           )}
 
-          {reports.map((report) => (
+          {reports.map((report) => {
+            const catColor = getCategoryColor(report.category);
+            const iconName = getCategoryIconName(report.category);
+            return (
               <Marker
                   key={report.id}
                   coordinate={{
-                    latitude: report.latitude,
-                    longitude: report.longitude,
+                    latitude: Number(report.latitude),
+                    longitude: Number(report.longitude),
                   }}
-                  pinColor={getPriorityColor(report.priority)}
                   onPress={() => setSelectedReport(report)}
               >
+                <View style={[styles.customMarker, { backgroundColor: catColor }]}>
+                  <MaterialIcons name={iconName as any} size={18} color="#fff" />
+                </View>
                 <Callout>
                   <View style={styles.callout}>
                     <Text style={styles.calloutTitle}>{report.title}</Text>
@@ -341,7 +532,8 @@ export default function MapScreen() {
                   </View>
                 </Callout>
               </Marker>
-          ))}
+            );
+          })}
         </MapView>
 
         <TouchableOpacity
@@ -432,12 +624,30 @@ export default function MapScreen() {
                   </View>
 
                   <Text style={styles.label}>Ort</Text>
-                  <TextInput
-                      value={address}
-                      onChangeText={setAddress}
-                      style={styles.input}
-                      placeholder="Adresse wird automatisch gesetzt"
-                  />
+                  <View style={styles.addressRow}>
+                    <TextInput
+                        value={address}
+                        onChangeText={setAddress}
+                        style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                        placeholder="Adresse wird automatisch gesetzt"
+                    />
+                    <TouchableOpacity
+                        style={styles.locateBtn}
+                        onPress={refreshModalLocation}
+                        disabled={locating}
+                    >
+                      <MaterialIcons
+                          name={locating ? "hourglass-empty" : "my-location"}
+                          size={20}
+                          color="#fff"
+                      />
+                    </TouchableOpacity>
+                  </View>
+                  {reportLocation && (
+                    <Text style={styles.coordsText}>
+                      📍 {reportLocation.latitude.toFixed(5)}, {reportLocation.longitude.toFixed(5)}
+                    </Text>
+                  )}
 
                   <Text style={styles.label}>Beschreibung</Text>
                   <TextInput
@@ -511,6 +721,20 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   map: { flex: 1 },
 
+  customMarker: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOpacity: 0.25,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
   callout: {
     maxWidth: 220,
     padding: 10,
@@ -581,6 +805,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
+  },
+  searchResultTitle: {
+    color: "#111827",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  searchResultSub: {
+    color: "#6b7280",
+    fontSize: 12,
+    marginTop: 2,
   },
   searchResultText: {
     color: "#333",
@@ -729,6 +963,25 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 15,
     marginBottom: 5,
+  },
+  addressRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 5,
+  },
+  locateBtn: {
+    backgroundColor: "#5D845C",
+    padding: 12,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  coordsText: {
+    fontSize: 11,
+    color: "#64748b",
+    marginBottom: 6,
+    marginLeft: 4,
   },
 
   cameraBtn: {

@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import {
     View,
     Text,
@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { AuthContext } from "@/context/AuthContext";
 
@@ -17,15 +18,30 @@ export default function SettingsScreen() {
     const router = useRouter();
     const auth = useContext(AuthContext) as {
         logout?: () => Promise<void> | void;
+        user?: { name?: string; email?: string; role?: string } | null;
     } | null;
 
     const [pushEnabled, setPushEnabled] = useState(true);
-    const [mailEnabled, setMailEnabled] = useState(true);
     const [locationEnabled, setLocationEnabled] = useState(true);
-    const [darkModeEnabled, setDarkModeEnabled] = useState(false);
+    const [loaded, setLoaded] = useState(false);
 
-    const handleComingSoon = (title: string) => {
-        Alert.alert(title, "Diese Funktion ist im Prototyp vorbereitet.");
+    useEffect(() => {
+        const loadSettings = async () => {
+            const [push, location] = await Promise.all([
+                AsyncStorage.getItem("settings:push"),
+                AsyncStorage.getItem("settings:location"),
+            ]);
+
+            if (push !== null) setPushEnabled(push === "true");
+            if (location !== null) setLocationEnabled(location === "true");
+            setLoaded(true);
+        };
+
+        loadSettings();
+    }, []);
+
+    const persist = async (key: string, value: boolean) => {
+        await AsyncStorage.setItem(key, String(value));
     };
 
     const handleLogout = async () => {
@@ -40,6 +56,13 @@ export default function SettingsScreen() {
                 },
             },
         ]);
+    };
+
+    const handleOpenPrivacy = () => {
+        Alert.alert(
+            "Datenschutz",
+            "Standort, Profildaten und Meldungsinformationen werden ausschließlich zur Verarbeitung von Infrastrukturmeldungen verwendet."
+        );
     };
 
     return (
@@ -58,19 +81,17 @@ export default function SettingsScreen() {
                             <Text style={styles.rowSubtitle}>Statusänderungen sofort erhalten</Text>
                         </View>
                     </View>
-                    <Switch value={pushEnabled} onValueChange={setPushEnabled} trackColor={{ false: "#cbd5e1", true: "#86efac" }} thumbColor={pushEnabled ? "#16a34a" : "#94a3b8"} />
+                    <Switch
+                        value={pushEnabled}
+                        onValueChange={(value) => {
+                            setPushEnabled(value);
+                            if (loaded) persist("settings:push", value);
+                        }}
+                        trackColor={{ false: "#cbd5e1", true: "#86efac" }}
+                        thumbColor={pushEnabled ? "#16a34a" : "#94a3b8"}
+                    />
                 </View>
 
-                <View style={styles.row}>
-                    <View style={styles.rowLeft}>
-                        <MaterialIcons name="email" size={20} color="#5D845C" />
-                        <View>
-                            <Text style={styles.rowTitle}>E-Mail Updates</Text>
-                            <Text style={styles.rowSubtitle}>Zusätzliche Zusammenfassungen per E-Mail</Text>
-                        </View>
-                    </View>
-                    <Switch value={mailEnabled} onValueChange={setMailEnabled} trackColor={{ false: "#cbd5e1", true: "#86efac" }} thumbColor={mailEnabled ? "#16a34a" : "#94a3b8"} />
-                </View>
             </View>
 
             <View style={styles.sectionCard}>
@@ -84,25 +105,23 @@ export default function SettingsScreen() {
                             <Text style={styles.rowSubtitle}>Für Kartenposition und Meldungserstellung</Text>
                         </View>
                     </View>
-                    <Switch value={locationEnabled} onValueChange={setLocationEnabled} trackColor={{ false: "#cbd5e1", true: "#86efac" }} thumbColor={locationEnabled ? "#16a34a" : "#94a3b8"} />
+                    <Switch
+                        value={locationEnabled}
+                        onValueChange={(value) => {
+                            setLocationEnabled(value);
+                            if (loaded) persist("settings:location", value);
+                        }}
+                        trackColor={{ false: "#cbd5e1", true: "#86efac" }}
+                        thumbColor={locationEnabled ? "#16a34a" : "#94a3b8"}
+                    />
                 </View>
 
-                <View style={styles.row}>
-                    <View style={styles.rowLeft}>
-                        <MaterialIcons name="dark-mode" size={20} color="#5D845C" />
-                        <View>
-                            <Text style={styles.rowTitle}>Dark Mode</Text>
-                            <Text style={styles.rowSubtitle}>Modernes dunkles Design aktivieren</Text>
-                        </View>
-                    </View>
-                    <Switch value={darkModeEnabled} onValueChange={setDarkModeEnabled} trackColor={{ false: "#cbd5e1", true: "#86efac" }} thumbColor={darkModeEnabled ? "#16a34a" : "#94a3b8"} />
-                </View>
             </View>
 
             <View style={styles.sectionCard}>
                 <Text style={styles.sectionTitle}>Konto</Text>
 
-                <TouchableOpacity style={styles.actionRow} onPress={() => handleComingSoon("Profil bearbeiten")}>
+                <TouchableOpacity style={styles.actionRow} onPress={() => router.push("/(tabs)/profile")}>
                     <View style={styles.rowLeft}>
                         <MaterialIcons name="person" size={20} color="#5D845C" />
                         <Text style={styles.rowTitle}>Profil bearbeiten</Text>
@@ -110,7 +129,7 @@ export default function SettingsScreen() {
                     <MaterialIcons name="chevron-right" size={22} color="#94a3b8" />
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.actionRow} onPress={() => handleComingSoon("Passwort ändern")}>
+                <TouchableOpacity style={styles.actionRow} onPress={() => router.push("/(tabs)/profile")}>
                     <View style={styles.rowLeft}>
                         <MaterialIcons name="lock" size={20} color="#5D845C" />
                         <Text style={styles.rowTitle}>Passwort ändern</Text>
@@ -118,7 +137,7 @@ export default function SettingsScreen() {
                     <MaterialIcons name="chevron-right" size={22} color="#94a3b8" />
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.actionRow} onPress={() => handleComingSoon("Datenschutz")}>
+                <TouchableOpacity style={styles.actionRow} onPress={handleOpenPrivacy}>
                     <View style={styles.rowLeft}>
                         <MaterialIcons name="privacy-tip" size={20} color="#5D845C" />
                         <Text style={styles.rowTitle}>Datenschutz</Text>
@@ -131,11 +150,15 @@ export default function SettingsScreen() {
                 <Text style={styles.sectionTitle}>System</Text>
                 <View style={styles.metaRow}>
                     <Text style={styles.metaLabel}>App Version</Text>
-                    <Text style={styles.metaValue}>1.0.0 Prototype</Text>
+                    <Text style={styles.metaValue}>1.0.0</Text>
                 </View>
                 <View style={styles.metaRow}>
-                    <Text style={styles.metaLabel}>Build</Text>
-                    <Text style={styles.metaValue}>2026.07.02</Text>
+                    <Text style={styles.metaLabel}>Benutzer</Text>
+                    <Text style={styles.metaValue}>{auth?.user?.email || "-"}</Text>
+                </View>
+                <View style={styles.metaRow}>
+                    <Text style={styles.metaLabel}>Rolle</Text>
+                    <Text style={styles.metaValue}>{auth?.user?.role || "citizen"}</Text>
                 </View>
             </View>
 

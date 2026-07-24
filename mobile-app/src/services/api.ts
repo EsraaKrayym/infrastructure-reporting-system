@@ -184,3 +184,39 @@ export const registerUser = async (data: any) => {
 
     return res.json();
 };
+
+export const getCurrentUser = async (token: string) => {
+    const res = await fetch(`${API_URL}/users/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+        throw new Error(data?.message || "Benutzerdaten konnten nicht geladen werden");
+    }
+
+    return data;
+};
+
+export const updateCurrentUser = async (
+    token: string,
+    payload: { name: string; email: string; password?: string }
+) => {
+    const res = await fetch(`${API_URL}/users/me`, {
+        method: "PUT",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+        throw new Error(data?.message || "Profil konnte nicht aktualisiert werden");
+    }
+
+    return data;
+};

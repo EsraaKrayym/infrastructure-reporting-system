@@ -45,6 +45,16 @@ export const AuthProvider = ({ children }: any) => {
         }
     };
 
+    const updateUser = async (nextUser: any | null) => {
+        setUser(nextUser);
+
+        if (nextUser) {
+            await AsyncStorage.setItem("user", JSON.stringify(nextUser));
+        } else {
+            await AsyncStorage.removeItem("user");
+        }
+    };
+
     const logout = async () => {
         setToken(null);
         setUser(null);
@@ -55,7 +65,7 @@ export const AuthProvider = ({ children }: any) => {
     };
 
     return (
-        <AuthContext.Provider value={{ token, user, avatarUri, login, logout, updateAvatar }}>
+        <AuthContext.Provider value={{ token, user, avatarUri, login, logout, updateAvatar, updateUser }}>
             {children}
         </AuthContext.Provider>
     );

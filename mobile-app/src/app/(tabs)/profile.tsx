@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useCallback, useContext, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -7,25 +7,114 @@ import {
   TouchableOpacity,
   Alert,
   Image,
+  TextInput,
+  ActivityIndicator,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
+import { useFocusEffect } from "@react-navigation/native";
 
 import { AuthContext } from "@/context/AuthContext";
+import { getCurrentUser, getReports, updateCurrentUser } from "@/services/api";
+import { getPendingReports } from "@/services/offline";
 
 export default function ProfileTab() {
   const router = useRouter();
   const auth = useContext(AuthContext) as {
+    token?: string | null;
     logout?: () => Promise<void> | void;
     updateAvatar?: (uri: string | null) => Promise<void> | void;
+    updateUser?: (user: any | null) => Promise<void> | void;
     user?: { name?: string; email?: string; role?: string } | null;
     avatarUri?: string | null;
   } | null;
 
-  const userName = auth?.user?.name || "Benutzer";
-  const userEmail = auth?.user?.email || "-";
+  const token = auth?.token ?? null;
+  const [displayName, setDisplayName] = useState(auth?.user?.name || "");
+  const [email, setEmail] = useState(auth?.user?.email || "");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [reportStats, setReportStats] = useState({ total: 0, inProgress: 0 });
+  const [pendingCount, setPendingCount] = useState(0);
+  const [lastSync, setLastSync] = useState<string>("-");
+
+  const userName = displayName || auth?.user?.name || "Benutzer";
+  const userEmail = email || auth?.user?.email || "-";
   const userRole = auth?.user?.role || "citizen";
+
+  useFocusEffect(
+    useCallback(() => {
+      const load = async () => {
+        if (!token) {
+          setLoading(false);
+          return;
+        }
+
+        try {
+          setLoading(true);
+          const [user, reports, pending] = await Promise.all([
+            getCurrentUser(token),
+            getReports(token),
+            getPendingReports(),
+          ]);
+
+          setDisplayName(user?.name || "");
+          setEmail(user?.email || "");
+          await auth?.updateUser?.(user || null);
+
+          const reportList = Array.isArray(reports) ? reports : [];
+          const inProgress = reportList.filter((r) => {
+            const status = String(r?.status || "").toLowerCase();
+            return ["in prüfung", "in bearbeitung", "in_review", "in_progress", "in progress"].includes(status);
+          }).length;
+
+          setReportStats({ total: reportList.length, inProgress });
+          setPendingCount(pending.length);
+          setLastSync(new Date().toLocaleTimeString("de-DE"));
+        } catch {
+          // Anzeige bleibt mit letzten bekannten Werten erhalten.
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      load();
+    }, [token, auth])
+  );
+
+  const roleLabel = useMemo(() => {
+    if (userRole === "citizen") return "Bürger";
+    if (userRole === "caseworker") return "Sachbearbeitung";
+    if (userRole === "admin") return "Administration";
+    return userRole;
+  }, [userRole]);
+
+  const handleSaveProfile = async () => {
+    if (!token) return;
+    if (!displayName.trim() || !email.trim()) {
+      Alert.alert("Fehler", "Name und E-Mail sind erforderlich.");
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const updated = await updateCurrentUser(token, {
+        name: displayName.trim(),
+        email: email.trim(),
+        password: password.trim() || undefined,
+      });
+
+      await auth?.updateUser?.(updated?.user || null);
+      setPassword("");
+      Alert.alert("Erfolg", "Profil wurde erfolgreich gespeichert.");
+    } catch (err: any) {
+      Alert.alert("Fehler", err?.message || "Profil konnte nicht aktualisiert werden.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleLogout = async () => {
     Alert.alert("Abmelden", "Möchten Sie sich wirklich abmelden?", [
@@ -65,10 +154,18 @@ export default function ProfileTab() {
 
   const menuItems = [
     { icon: "description", title: "Meine Meldungen", subtitle: "Alle eigenen Reports anzeigen", onPress: () => router.push("/(tabs)/report") },
-    { icon: "notifications", title: "Benachrichtigungen", subtitle: "Status-Updates und Hinweise", onPress: () => Alert.alert("Bald verfügbar", "Diese Funktion folgt in der nächsten Version.") },
-    { icon: "lock", title: "Passwort ändern", subtitle: "Kontosicherheit aktualisieren", onPress: () => Alert.alert("Bald verfügbar", "Passwort ändern wird noch implementiert.") },
-    { icon: "info", title: "App-Informationen", subtitle: "Version und Systemstatus", onPress: () => Alert.alert("CityReport", "Prototype • Mobile App") },
+    { icon: "notifications", title: "Benachrichtigungen", subtitle: "Status-Updates und Hinweise", onPress: () => router.push("/(tabs)/notifications") },
+    { icon: "settings", title: "Einstellungen", subtitle: "App-Optionen und Datenschutz", onPress: () => router.push("/(tabs)/settings") },
+    { icon: "info", title: "App-Informationen", subtitle: "Version und Systemstatus", onPress: () => Alert.alert("CityReport", "Mobile App • Version 1.0.0") },
   ];
+
+  if (loading) {
+    return (
+      <View style={styles.loadingWrap}>
+        <ActivityIndicator size="large" color="#5D845C" />
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -89,7 +186,7 @@ export default function ProfileTab() {
 
         <Text style={styles.name}>{userName}</Text>
         <Text style={styles.email}>{userEmail}</Text>
-        <Text style={styles.subtitle}>Professioneller Prototyp • Profilübersicht</Text>
+        <Text style={styles.subtitle}>Profilübersicht und Kontoverwaltung</Text>
 
         <View style={styles.badgeRow}>
           <View style={styles.badge}>
@@ -99,21 +196,64 @@ export default function ProfileTab() {
 
           <View style={styles.badgeMuted}>
             <MaterialIcons name="person" size={16} color="#475569" />
-            <Text style={styles.badgeMutedText}>{userRole === "citizen" ? "Bürger" : userRole}</Text>
+            <Text style={styles.badgeMutedText}>{roleLabel}</Text>
           </View>
         </View>
       </View>
 
       <View style={styles.statsRow}>
         <View style={styles.statCard}>
-          <Text style={styles.statValue}>12</Text>
+          <Text style={styles.statValue}>{reportStats.total}</Text>
           <Text style={styles.statLabel}>Meldungen</Text>
         </View>
 
         <View style={styles.statCard}>
-          <Text style={styles.statValue}>4</Text>
+          <Text style={styles.statValue}>{reportStats.inProgress}</Text>
           <Text style={styles.statLabel}>In Bearbeitung</Text>
         </View>
+      </View>
+
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionTitle}>Profil aktualisieren</Text>
+
+        <Text style={styles.inputLabel}>Name</Text>
+        <TextInput
+          style={styles.input}
+          value={displayName}
+          onChangeText={setDisplayName}
+          placeholder="Name"
+          placeholderTextColor="#94a3b8"
+        />
+
+        <Text style={styles.inputLabel}>E-Mail</Text>
+        <TextInput
+          style={styles.input}
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          placeholder="E-Mail"
+          placeholderTextColor="#94a3b8"
+        />
+
+        <Text style={styles.inputLabel}>Neues Passwort (optional)</Text>
+        <TextInput
+          style={styles.input}
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          placeholder="Nur bei Änderung eingeben"
+          placeholderTextColor="#94a3b8"
+        />
+
+        <TouchableOpacity
+          style={[styles.saveButton, saving && { opacity: 0.7 }]}
+          activeOpacity={0.85}
+          onPress={handleSaveProfile}
+          disabled={saving}
+        >
+          <Text style={styles.saveButtonText}>{saving ? "Speichern..." : "Profil speichern"}</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.sectionCard}>
@@ -139,11 +279,15 @@ export default function ProfileTab() {
         <Text style={styles.sectionTitle}>Schnellinfo</Text>
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>Verbindung</Text>
-          <Text style={styles.infoValue}>Online</Text>
+          <Text style={styles.infoValue}>{pendingCount > 0 ? "Teilweise offline" : "Online"}</Text>
         </View>
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>Letzte Synchronisation</Text>
-          <Text style={styles.infoValue}>Gerade eben</Text>
+          <Text style={styles.infoValue}>{lastSync}</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Warteschlange</Text>
+          <Text style={styles.infoValue}>{pendingCount} offen</Text>
         </View>
       </View>
 
@@ -299,6 +443,40 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#111827",
     marginBottom: 12,
+  },
+  loadingWrap: {
+    flex: 1,
+    backgroundColor: "#EAF2EC",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#475569",
+    marginBottom: 6,
+    marginTop: 8,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#d1d5db",
+    backgroundColor: "#f8fafc",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: "#0f172a",
+  },
+  saveButton: {
+    marginTop: 14,
+    backgroundColor: "#5D845C",
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  saveButtonText: {
+    color: "#fff",
+    fontWeight: "800",
+    fontSize: 14,
   },
   menuItem: {
     flexDirection: "row",

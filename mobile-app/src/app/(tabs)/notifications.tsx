@@ -1,12 +1,18 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useContext, useMemo, useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect } from "@react-navigation/native";
+import { AuthContext } from "@/context/AuthContext";
+import { getReports } from "@/services/api";
+import { getPendingReports } from "@/services/offline";
 
 type NotificationItem = {
   id: string;
@@ -18,41 +24,105 @@ type NotificationItem = {
 };
 
 export default function NotificationsTab() {
+  const auth = useContext(AuthContext) as { token?: string | null } | null;
+  const token = auth?.token ?? null;
+
   const [activeFilter, setActiveFilter] = useState<"alle" | "ungelesen" | "status">("alle");
-  const [notifications, setNotifications] = useState<NotificationItem[]>([
-    {
-      id: "1",
-      type: "status",
-      title: "Meldung #84 wurde aktualisiert",
-      message: "Der Status wurde auf 'In Bearbeitung' geändert.",
-      time: "Vor 5 Min.",
-      read: false,
-    },
-    {
-      id: "2",
-      type: "warning",
-      title: "Standortfreigabe erforderlich",
-      message: "Bitte aktiviere GPS, um Kartenfunktionen optimal zu nutzen.",
-      time: "Vor 1 Std.",
-      read: false,
-    },
-    {
-      id: "3",
-      type: "system",
-      title: "Synchronisierung erfolgreich",
-      message: "Alle lokalen Daten wurden mit dem Server abgeglichen.",
-      time: "Heute, 08:42",
-      read: true,
-    },
-    {
-      id: "4",
-      type: "status",
-      title: "Meldung #80 abgeschlossen",
-      message: "Die Reparatur wurde erfolgreich durchgeführt.",
-      time: "Gestern",
-      read: true,
-    },
-  ]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const normalizeStatus = (value: string) => {
+    const status = String(value || "").toLowerCase();
+    if (["neu", "new", "open", "pending"].includes(status)) return "Neu";
+    if (["in prüfung", "in_review"].includes(status)) return "In Prüfung";
+    if (["in bearbeitung", "in_progress", "in progress"].includes(status)) return "In Bearbeitung";
+    if (["erledigt", "done", "fixed", "repaired", "completed"].includes(status)) return "Erledigt";
+    if (["abgelehnt", "rejected", "declined"].includes(status)) return "Abgelehnt";
+    return value || "Unbekannt";
+  };
+
+  const formatTime = (value?: string) => {
+    if (!value) return "Unbekannt";
+    try {
+      return new Date(value).toLocaleString("de-DE", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return "Unbekannt";
+    }
+  };
+
+  const loadNotifications = useCallback(async () => {
+    if (!token) {
+      setNotifications([]);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError("");
+
+      const [reports, pending] = await Promise.all([
+        getReports(token),
+        getPendingReports(),
+      ]);
+
+      const readRaw = await AsyncStorage.getItem("mobile-app:readNotifications");
+      const readMap = readRaw ? (JSON.parse(readRaw) as Record<string, boolean>) : {};
+
+      const sortedReports = (Array.isArray(reports) ? reports : [])
+        .slice()
+        .sort((a, b) => new Date(b?.created_at || 0).getTime() - new Date(a?.created_at || 0).getTime())
+        .slice(0, 40);
+
+      const reportNotifications: NotificationItem[] = sortedReports.map((report) => {
+        const status = normalizeStatus(String(report?.status || "Neu"));
+        const type: NotificationItem["type"] = status === "Neu" ? "system" : "status";
+        const id = `report-${report?.id}`;
+
+        return {
+          id,
+          type,
+          title: `${report?.title || `Meldung #${report?.id ?? "-"}`}`,
+          message: `Status: ${status} • ${report?.address || "Keine Adresse"}`,
+          time: formatTime(report?.created_at),
+          read: !!readMap[id],
+        };
+      });
+
+      const queueNotification: NotificationItem[] = pending.length
+        ? [
+            {
+              id: "offline-queue",
+              type: "warning",
+              title: "Offline-Warteschlange aktiv",
+              message: `${pending.length} Meldung(en) warten auf Übertragung.`,
+              time: "Lokaler Status",
+              read: !!readMap["offline-queue"],
+            },
+          ]
+        : [];
+
+      setNotifications([...queueNotification, ...reportNotifications]);
+    } catch (err: any) {
+      setError(err?.message || "Benachrichtigungen konnten nicht geladen werden");
+      setNotifications([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadNotifications();
+    }, [loadNotifications])
+  );
 
   const unreadCount = useMemo(
     () => notifications.filter((n) => !n.read).length,
@@ -66,11 +136,27 @@ export default function NotificationsTab() {
   }, [activeFilter, notifications]);
 
   const markAllAsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    setNotifications((prev) => {
+      const updated = prev.map((n) => ({ ...n, read: true }));
+      const map = updated.reduce<Record<string, boolean>>((acc, item) => {
+        acc[item.id] = true;
+        return acc;
+      }, {});
+      AsyncStorage.setItem("mobile-app:readNotifications", JSON.stringify(map));
+      return updated;
+    });
   };
 
   const toggleRead = (id: string) => {
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: !n.read } : n)));
+    setNotifications((prev) => {
+      const updated = prev.map((n) => (n.id === id ? { ...n, read: !n.read } : n));
+      const map = updated.reduce<Record<string, boolean>>((acc, item) => {
+        acc[item.id] = !!item.read;
+        return acc;
+      }, {});
+      AsyncStorage.setItem("mobile-app:readNotifications", JSON.stringify(map));
+      return updated;
+    });
   };
 
   const getIcon = (type: NotificationItem["type"]) => {
@@ -131,14 +217,22 @@ export default function NotificationsTab() {
         })}
       </View>
 
-      {filteredNotifications.length === 0 ? (
+      {!!error && <Text style={styles.errorText}>❌ {error}</Text>}
+
+      {loading ? (
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator size="large" color="#5D845C" />
+        </View>
+      ) : null}
+
+      {!loading && filteredNotifications.length === 0 ? (
         <View style={styles.emptyCard}>
           <MaterialIcons name="notifications-none" size={30} color="#94A3B8" />
           <Text style={styles.emptyTitle}>Keine Benachrichtigungen</Text>
           <Text style={styles.emptyText}>Für diesen Filter sind aktuell keine Einträge vorhanden.</Text>
         </View>
       ) : (
-        filteredNotifications.map((item) => (
+        !loading && filteredNotifications.map((item) => (
           <TouchableOpacity
             key={item.id}
             activeOpacity={0.9}
@@ -214,6 +308,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
     marginBottom: 14,
+  },
+  errorText: {
+    color: "#b91c1c",
+    fontSize: 13,
+    marginBottom: 12,
+  },
+  loadingWrap: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 10,
   },
   filterChip: {
     backgroundColor: "#E2E8F0",
