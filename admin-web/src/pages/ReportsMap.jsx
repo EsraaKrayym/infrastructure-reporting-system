@@ -186,7 +186,7 @@ export default function ReportsMap({ token }) {
                         </Link>
                     )}
 
-                    {isCaseworker && (
+                    {(isAdmin || isCaseworker) && (
                         <Link
                             to="/categories"
                             className="menu-item"

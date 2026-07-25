@@ -28,6 +28,7 @@ export default function Benutzer() {
     });
 
     const currentUser = JSON.parse(localStorage.getItem("user") || "null");
+    const isAdmin = currentUser?.role === "admin";
     const isCaseworker = currentUser?.role === "caseworker";
 
     const loadUsers = async () => {
@@ -156,7 +157,7 @@ export default function Benutzer() {
                         👥 Benutzer
                     </Link>
 
-                    {isCaseworker && (
+                    {(isAdmin || isCaseworker) && (
                         <Link to="/categories" className="menu-item">
                             🏷 Kategorien
                         </Link>

@@ -145,7 +145,7 @@ export default function Statistics() {
                     <Link to="/dashboard" className="menu-item">📊 Dashboard</Link>
                     <Link to="/reports" className="menu-item">📋 Meldungen</Link>
                     {isAdmin && <Link to="/users" className="menu-item">👥 Benutzer</Link>}
-                    {isCaseworker && <Link to="/categories" className="menu-item">🏷 Kategorien</Link>}
+                    {(isAdmin || isCaseworker) && <Link to="/categories" className="menu-item">🏷 Kategorien</Link>}
                     <Link to="/map" className="menu-item">🗺 Karte</Link>
                     <Link to="/notifications" className="menu-item">🔔 Benachrichtigungen</Link>
                     <Link to="/statistics" className="menu-item active">📈 Statistiken</Link>

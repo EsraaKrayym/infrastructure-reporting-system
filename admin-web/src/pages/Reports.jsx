@@ -200,7 +200,7 @@ export default function Reports() {
                         </Link>
                     )}
 
-                    {isCaseworker && (
+                    {(isAdmin || isCaseworker) && (
                         <Link to="/categories" className="menu-item">
                             🏷 Kategorien
                         </Link>

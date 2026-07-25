@@ -26,21 +26,6 @@ function StaffRoute({ children }) {
   return children;
 }
 
-function CaseworkerRoute({ children }) {
-  const token = localStorage.getItem("token");
-  const user = JSON.parse(localStorage.getItem("user") || "null");
-
-  if (!token) {
-    return <Navigate to="/login" />;
-  }
-
-  if (user?.role !== "caseworker") {
-    return <Navigate to="/dashboard" />;
-  }
-
-  return children;
-}
-
 function AdminRoute({ children }) {
   const token = localStorage.getItem("token");
   const user = JSON.parse(localStorage.getItem("user") || "null");
@@ -124,9 +109,9 @@ function App() {
             <Route
                 path="/categories"
                 element={
-                    <CaseworkerRoute>
+                    <StaffRoute>
                       <Categories />
-                    </CaseworkerRoute>
+                    </StaffRoute>
                 }
             />
           {/* Default Route */}

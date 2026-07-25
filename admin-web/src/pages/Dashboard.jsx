@@ -25,6 +25,7 @@ export default function Dashboard({ token }) {
     const [error, setError] = useState("");
     const currentUser = JSON.parse(localStorage.getItem("user") || "null");
     const isAdmin = currentUser?.role === "admin";
+    const isCaseworker = currentUser?.role === "caseworker";
 
     useEffect(() => {
         const loadReports = async () => {
@@ -80,6 +81,7 @@ export default function Dashboard({ token }) {
                     <Link to="/dashboard" className="menu-item active">📊 Dashboard</Link>
                     <Link to="/reports" className="menu-item">📋 Meldungen</Link>
                     {isAdmin && <Link to="/users" className="menu-item">👥 Benutzer</Link>}
+                    {(isAdmin || isCaseworker) && <Link to="/categories" className="menu-item">🏷 Kategorien</Link>}
                     <Link to="/map" className="menu-item">🗺 Map</Link>
                     <Link to="/notifications" className="menu-item">🔔 Benachrichtigungen</Link>
                     <Link to="/statistics" className="menu-item">📈 Statistiken</Link>
