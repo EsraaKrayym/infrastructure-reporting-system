@@ -37,7 +37,10 @@ export default function Login() {
         <div className="login-page">
 
             <div className="login-left">
-                <h1>CityReport</h1>
+                <div className="login-brand">
+                    <img src="/logo.png" alt="CityReport Logo" className="login-logo" />
+                    <h1>CityReport</h1>
+                </div>
 
                 <p>
                     Verwaltung und Bearbeitung eingehender

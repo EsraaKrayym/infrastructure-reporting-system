@@ -5,7 +5,8 @@ import {
     TextInput,
     TouchableOpacity,
     StyleSheet,
-    Alert
+    Alert,
+    Image
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -76,7 +77,14 @@ export default function LoginScreen() {
         <View style={styles.container}>
 
             <View style={styles.logoContainer}>
-                <Text style={styles.logo}>CityReport</Text>
+                <View style={styles.logoRow}>
+                    <Image
+                        source={require("../../assets/images/logo-glow.png")}
+                        style={styles.logoImage}
+                        resizeMode="contain"
+                    />
+                    <Text style={styles.logo}>CityReport</Text>
+                </View>
 
                 <Text style={styles.subtitle}>
                     Melden. Verfolgen. Verbessern.
@@ -180,6 +188,18 @@ const styles = StyleSheet.create({
     logoContainer: {
         alignItems: "center",
         marginBottom: 40
+    },
+
+    logoRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 12,
+        marginBottom: 6,
+    },
+
+    logoImage: {
+        width: 52,
+        height: 52,
     },
 
     logo: {
