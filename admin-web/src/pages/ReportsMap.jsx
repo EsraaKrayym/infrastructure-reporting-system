@@ -22,12 +22,56 @@ const getPhotoUrl = (report) => {
     return `${uploadBaseUrl}/api/reports/${report.id}/photo`;
 };
 
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-    iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-    iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-    shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png"
-});
+const getCategoryColor = (category) => {
+    const key = String(category || "").toLowerCase().replace(/\s/g, "_");
+    if (["road_damage", "straßenschäden", "strassenschaden"].includes(key)) return "#dc2626";
+    if (["street_light", "beleuchtung"].includes(key)) return "#f59e0b";
+    if (["waste", "müll", "mull", "müll_&_sauberkeit", "mull_&_sauberkeit"].includes(key)) return "#16a34a";
+    return "#6366f1";
+};
+
+const getCategoryIcon = (category) => {
+    const key = String(category || "").toLowerCase().replace(/\s/g, "_");
+    if (["road_damage", "straßenschäden", "strassenschaden"].includes(key)) return "🔧";
+    if (["street_light", "beleuchtung"].includes(key)) return "💡";
+    if (["waste", "müll", "mull", "müll_&_sauberkeit", "mull_&_sauberkeit"].includes(key)) return "♻️";
+    return "📍";
+};
+
+const getStatusConfig = (status) => {
+    const s = String(status || "").toLowerCase();
+    if (["neu", "open", "pending"].includes(s)) return { label: "Neu", color: "#2563eb", bg: "#dbeafe", dot: "🔵" };
+    if (["in bearbeitung", "in_progress", "in progress", "in_review"].includes(s)) return { label: "In Bearbeitung", color: "#d97706", bg: "#fef3c7", dot: "🟡" };
+    if (["erledigt", "repaired", "done", "fixed"].includes(s)) return { label: "Erledigt", color: "#16a34a", bg: "#dcfce7", dot: "🟢" };
+    return { label: status || "-", color: "#6b7280", bg: "#f3f4f6", dot: "⚪" };
+};
+
+const getPriorityConfig = (priority) => {
+    const p = String(priority || "").toLowerCase();
+    if (p === "high" || p === "hoch") return { label: "Hoch", color: "#dc2626" };
+    if (p === "medium" || p === "mittel") return { label: "Mittel", color: "#f97316" };
+    if (p === "low" || p === "niedrig") return { label: "Niedrig", color: "#16a34a" };
+    return { label: priority || "-", color: "#6b7280" };
+};
+
+const createMarkerIcon = (category) => {
+    const color = getCategoryColor(category);
+    const icon = getCategoryIcon(category);
+    return L.divIcon({
+        className: "",
+        html: `<div style="
+            width:38px;height:38px;border-radius:50%;
+            background:${color};
+            display:flex;align-items:center;justify-content:center;
+            font-size:18px;
+            box-shadow:0 2px 8px rgba(0,0,0,0.3);
+            border:2.5px solid white;
+        ">${icon}</div>`,
+        iconSize: [38, 38],
+        iconAnchor: [19, 19],
+        popupAnchor: [0, -22],
+    });
+};
 
 export default function ReportsMap({ token }) {
 
@@ -310,42 +354,75 @@ export default function ReportsMap({ token }) {
                                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                             />
 
-                            {reportsWithCoords.map(report => (
-
+                            {reportsWithCoords.map(report => {
+                                const statusCfg = getStatusConfig(report.status);
+                                const priCfg = getPriorityConfig(report.priority);
+                                const photoUrl = getPhotoUrl(report);
+                                const catColor = getCategoryColor(report.category);
+                                return (
                                 <Marker
                                     key={report.id}
                                     position={[
                                         Number(report.latitude),
                                         Number(report.longitude)
                                     ]}
+                                    icon={createMarkerIcon(report.category)}
                                 >
+                                    <Popup minWidth={280} maxWidth={320}>
+                                        <div style={{ fontFamily: "Segoe UI, sans-serif", padding: "2px 0" }}>
 
-                                    <Popup>
+                                            {/* Colored header */}
+                                            <div style={{ background: catColor, borderRadius: "10px 10px 0 0", padding: "10px 14px", margin: "-14px -14px 12px -14px", display: "flex", alignItems: "center", gap: 8 }}>
+                                                <span style={{ fontSize: 20 }}>{getCategoryIcon(report.category)}</span>
+                                                <span style={{ color: "white", fontWeight: 700, fontSize: 14, lineHeight: 1.3 }}>{report.title || `Meldung #${report.id}`}</span>
+                                            </div>
 
-                                        <h3>
-                                            {report.title || `Meldung #${report.id}`}
-                                        </h3>
+                                            {/* Status + Priority pills */}
+                                            <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
+                                                <span style={{ background: statusCfg.bg, color: statusCfg.color, borderRadius: 20, padding: "3px 10px", fontSize: 12, fontWeight: 700 }}>
+                                                    {statusCfg.dot} {statusCfg.label}
+                                                </span>
+                                                <span style={{ background: "#f3f4f6", color: priCfg.color, borderRadius: 20, padding: "3px 10px", fontSize: 12, fontWeight: 700 }}>
+                                                    ⚡ {priCfg.label}
+                                                </span>
+                                            </div>
 
-                                        <p>
-                                            {report.description || "Keine Beschreibung"}
-                                        </p>
+                                            {/* Description */}
+                                            {report.description && (
+                                                <p style={{ fontSize: 13, color: "#374151", marginBottom: 10, lineHeight: 1.5 }}>
+                                                    {report.description}
+                                                </p>
+                                            )}
 
-                                        <p><strong>Status:</strong> {report.status || "-"}</p>
-                                        <p><strong>Kategorie:</strong> {report.category || "-"}</p>
-                                        <p><strong>Adresse:</strong> {report.address || "-"}</p>
-                                        {getPhotoUrl(report) && (
-                                            <img
-                                                src={getPhotoUrl(report)}
-                                                alt={report.title || `Meldung #${report.id}`}
-                                                style={{ width: "100%", marginTop: 8, borderRadius: 10 }}
-                                            />
-                                        )}
+                                            {/* Info card */}
+                                            <div style={{ background: "#f8fafc", borderRadius: 10, padding: "8px 12px", marginBottom: 10 }}>
+                                                <div style={{ display: "flex", gap: 6, alignItems: "flex-start", marginBottom: 4 }}>
+                                                    <span style={{ fontSize: 13 }}>🏷</span>
+                                                    <span style={{ fontSize: 12, color: "#475569" }}><strong>Kategorie:</strong> {report.category || "-"}</span>
+                                                </div>
+                                                <div style={{ display: "flex", gap: 6, alignItems: "flex-start", marginBottom: 4 }}>
+                                                    <span style={{ fontSize: 13 }}>📍</span>
+                                                    <span style={{ fontSize: 12, color: "#475569" }}><strong>Adresse:</strong> {report.address || "-"}</span>
+                                                </div>
+                                                <div style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
+                                                    <span style={{ fontSize: 13 }}>🕐</span>
+                                                    <span style={{ fontSize: 12, color: "#475569" }}><strong>Datum:</strong> {report.created_at ? new Date(report.created_at).toLocaleDateString("de-DE") : "-"}</span>
+                                                </div>
+                                            </div>
 
+                                            {/* Photo */}
+                                            {photoUrl && (
+                                                <img
+                                                    src={photoUrl}
+                                                    alt={report.title || `Meldung #${report.id}`}
+                                                    style={{ width: "100%", borderRadius: 10, objectFit: "cover", maxHeight: 160 }}
+                                                />
+                                            )}
+                                        </div>
                                     </Popup>
-
                                 </Marker>
-
-                            ))}
+                                );
+                            })}
 
                         </MapContainer>
                     )}
