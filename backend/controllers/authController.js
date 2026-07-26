@@ -5,6 +5,12 @@ import jwt from "jsonwebtoken";
 export const login = async (req, res) => {
     try {
         const { email, password } = req.body;
+        const normalizedEmail = String(email || "").trim().toLowerCase();
+        const normalizedPassword = String(password || "");
+
+        if (!normalizedEmail || !normalizedPassword) {
+            return res.status(400).json({ message: "E-Mail und Passwort sind erforderlich" });
+        }
 
         const defaultAdminEmail = process.env.DEFAULT_ADMIN_EMAIL || "admin@cityreport.de";
         const defaultAdminPassword = process.env.DEFAULT_ADMIN_PASSWORD || "123456";
@@ -15,11 +21,11 @@ export const login = async (req, res) => {
              FROM users u
              LEFT JOIN roles r ON r.id = u.role_id
              WHERE u.email = $1`,
-            [email]
+            [normalizedEmail]
         );
 
         // Falls der Standard-Admin fehlt, automatisch erstellen (Prototype-Stabilität)
-        if (result.rows.length === 0 && email === defaultAdminEmail) {
+        if (result.rows.length === 0 && normalizedEmail === String(defaultAdminEmail).toLowerCase()) {
             const hashedDefaultPassword = await bcrypt.hash(defaultAdminPassword, 10);
 
             await pool.query(
@@ -45,7 +51,7 @@ export const login = async (req, res) => {
                  FROM users u
                  LEFT JOIN roles r ON r.id = u.role_id
                  WHERE u.email = $1`,
-                [email]
+                [normalizedEmail]
             );
         }
 
@@ -63,13 +69,13 @@ export const login = async (req, res) => {
 
         // Normalfall: bcrypt hash
         if (typeof user.password === "string" && user.password.startsWith("$2")) {
-            isMatch = await bcrypt.compare(password, user.password);
+            isMatch = await bcrypt.compare(normalizedPassword, user.password);
         } else {
             // Legacy-Fall: Klartext-Passwort in DB -> einmalig migrieren
-            isMatch = password === user.password;
+            isMatch = normalizedPassword === user.password;
 
             if (isMatch) {
-                const newHash = await bcrypt.hash(password, 10);
+                const newHash = await bcrypt.hash(normalizedPassword, 10);
                 await pool.query(
                     "UPDATE users SET password = $1 WHERE id = $2",
                     [newHash, user.id]
@@ -105,6 +111,13 @@ export const login = async (req, res) => {
 export const register = async (req, res) => {
     try {
         const { name, email, password, role } = req.body;
+        const normalizedName = String(name || "").trim();
+        const normalizedEmail = String(email || "").trim().toLowerCase();
+        const normalizedPassword = String(password || "");
+
+        if (!normalizedName || !normalizedEmail || !normalizedPassword) {
+            return res.status(400).json({ message: "Name, E-Mail und Passwort sind erforderlich" });
+        }
 
         const allowedRoles = ["citizen", "caseworker", "admin"];
         const normalizedRole = allowedRoles.includes(String(role || "").toLowerCase())
@@ -113,14 +126,14 @@ export const register = async (req, res) => {
 
         const existingUser = await pool.query(
             "SELECT * FROM users WHERE email = $1",
-            [email]
+            [normalizedEmail]
         );
 
         if (existingUser.rows.length > 0) {
             return res.status(400).json({ message: "Email already exists" });
         }
 
-        const hashedPassword = await bcrypt.hash(password, 10);
+        const hashedPassword = await bcrypt.hash(normalizedPassword, 10);
 
         const result = await pool.query(
             `INSERT INTO users (name, email, password, role_id, blocked)
@@ -132,7 +145,7 @@ export const register = async (req, res) => {
                  false
              )
              RETURNING id`,
-            [name, email, hashedPassword, normalizedRole]
+            [normalizedName, normalizedEmail, hashedPassword, normalizedRole]
         );
 
         res.status(201).json({

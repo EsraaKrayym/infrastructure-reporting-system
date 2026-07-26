@@ -7,13 +7,20 @@ import {
   ActivityIndicator,
   Modal,
   TouchableOpacity,
+  Image,
+  ScrollView,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
+import { MaterialIcons } from "@expo/vector-icons";
 
 import { AuthContext } from "@/context/AuthContext";
 import { getReports } from "@/services/api";
 
 export default function ReportsScreen() {
+
+  const API_URL =
+      (process.env.EXPO_PUBLIC_API_URL || "").trim() ||
+      "https://cityreport-backend.onrender.com/api";
 
   const { token } = useContext(AuthContext);
 
@@ -70,6 +77,28 @@ export default function ReportsScreen() {
     }
   };
 
+  const getStatusMeta = (status: string) => {
+    switch (String(status || "").toLowerCase()) {
+      case "erledigt":
+      case "done":
+      case "fixed":
+      case "repaired":
+        return { label: "Erledigt", color: "#166534", bg: "#DCFCE7", icon: "verified" as const };
+      case "in prüfung":
+      case "in_review":
+        return { label: "In Prüfung", color: "#92400E", bg: "#FEF3C7", icon: "hourglass-top" as const };
+      case "in bearbeitung":
+      case "in_progress":
+      case "in progress":
+        return { label: "In Bearbeitung", color: "#1D4ED8", bg: "#DBEAFE", icon: "build-circle" as const };
+      case "abgelehnt":
+      case "rejected":
+        return { label: "Abgelehnt", color: "#991B1B", bg: "#FEE2E2", icon: "block" as const };
+      default:
+        return { label: "Neu", color: "#0F766E", bg: "#CCFBF1", icon: "fiber-new" as const };
+    }
+  };
+
   const getStatusIcon = (status: string) => {
 
     switch (status) {
@@ -92,6 +121,15 @@ export default function ReportsScreen() {
       month: "2-digit",
       year: "numeric",
     });
+  };
+
+  const resolvePhotoUri = (report: any): string | null => {
+    const rawPhoto = String(report?.photo || "").trim();
+    if (!rawPhoto) return null;
+    if (rawPhoto.startsWith("data:image/")) return rawPhoto;
+    if (rawPhoto.startsWith("http://") || rawPhoto.startsWith("https://")) return rawPhoto;
+    if (!report?.id) return null;
+    return `${API_URL}/reports/${report.id}/photo`;
   };
 
   if (loading) {
@@ -176,6 +214,9 @@ export default function ReportsScreen() {
                     activeOpacity={0.85}
                     onPress={() => setSelectedReport(item)}
                 >
+                  {(() => {
+                    const meta = getStatusMeta(item.status);
+                    return (
                   <View
                       style={[
                         styles.reportCard,
@@ -186,9 +227,12 @@ export default function ReportsScreen() {
                   >
 
                     <View style={styles.reportTopRow}>
-                      <Text style={styles.reportTitle}>
-                        {item.status || "Neu"} #{item.id}
-                      </Text>
+                      <View style={[styles.statusPill, { backgroundColor: meta.bg }]}>
+                        <MaterialIcons name={meta.icon} size={14} color={meta.color} />
+                        <Text style={[styles.statusPillText, { color: meta.color }]}>
+                          {meta.label}
+                        </Text>
+                      </View>
 
                       <Text style={styles.reportDate}>
                         {formatDate(item.created_at)}
@@ -199,7 +243,14 @@ export default function ReportsScreen() {
                       {item.title || item.category || "Meldung"}
                     </Text>
 
+                    <View style={styles.reportBottomRow}>
+                      <Text style={styles.reportMetaText}>#{item.id} • {item.category || "Kategorie"}</Text>
+                      <MaterialIcons name="chevron-right" size={18} color="#6B7280" />
+                    </View>
+
                   </View>
+                    );
+                  })()}
                 </TouchableOpacity>
             )}
         />
@@ -212,36 +263,83 @@ export default function ReportsScreen() {
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalCard}>
-              <Text style={styles.modalBadge}>
-                {selectedReport?.status || "Neu"} #{selectedReport?.id}
-              </Text>
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <View style={styles.modalHeaderRow}>
+                  <Text style={styles.modalTitle}>
+                    {selectedReport?.title || selectedReport?.category || "Meldung"}
+                  </Text>
 
-              <Text style={styles.modalTitle}>
-                {selectedReport?.title || selectedReport?.category || "Meldung"}
-              </Text>
+                  <TouchableOpacity
+                      style={styles.iconCloseButton}
+                      onPress={() => setSelectedReport(null)}
+                  >
+                    <MaterialIcons name="close" size={20} color="#334155" />
+                  </TouchableOpacity>
+                </View>
 
-              <Text style={styles.modalLine}>
-                📅 {formatDate(selectedReport?.created_at)}
-              </Text>
-              <Text style={styles.modalLine}>
-                🏷 Kategorie: {selectedReport?.category || "-"}
-              </Text>
-              <Text style={styles.modalLine}>
-                ⚡ Priorität: {selectedReport?.priority || "-"}
-              </Text>
-              <Text style={styles.modalLine}>
-                📍 Adresse: {selectedReport?.address || "-"}
-              </Text>
-              <Text style={styles.modalDescription}>
-                {selectedReport?.description || "Keine Beschreibung vorhanden."}
-              </Text>
+                {(() => {
+                  const meta = getStatusMeta(selectedReport?.status);
+                  return (
+                    <View style={styles.modalMetaRow}>
+                      <View style={[styles.statusPill, { backgroundColor: meta.bg }]}>
+                        <MaterialIcons name={meta.icon} size={14} color={meta.color} />
+                        <Text style={[styles.statusPillText, { color: meta.color }]}>
+                          {meta.label}
+                        </Text>
+                      </View>
+                      <Text style={styles.modalReportId}>Meldung #{selectedReport?.id}</Text>
+                    </View>
+                  );
+                })()}
 
-              <TouchableOpacity
-                  style={styles.modalCloseButton}
-                  onPress={() => setSelectedReport(null)}
-              >
-                <Text style={styles.modalCloseText}>Schließen</Text>
-              </TouchableOpacity>
+                {resolvePhotoUri(selectedReport) ? (
+                    <Image
+                        source={{ uri: resolvePhotoUri(selectedReport) as string }}
+                        style={styles.modalImage}
+                        resizeMode="cover"
+                    />
+                ) : null}
+
+                <View style={styles.modalInfoCard}>
+                  <View style={styles.infoLine}>
+                    <MaterialIcons name="event" size={18} color="#64748B" />
+                    <Text style={styles.infoLabel}>Datum</Text>
+                    <Text style={styles.infoValue}>{formatDate(selectedReport?.created_at) || "-"}</Text>
+                  </View>
+
+                  <View style={styles.infoLine}>
+                    <MaterialIcons name="sell" size={18} color="#64748B" />
+                    <Text style={styles.infoLabel}>Kategorie</Text>
+                    <Text style={styles.infoValue}>{selectedReport?.category || "-"}</Text>
+                  </View>
+
+                  <View style={styles.infoLine}>
+                    <MaterialIcons name="priority-high" size={18} color="#64748B" />
+                    <Text style={styles.infoLabel}>Priorität</Text>
+                    <Text style={styles.infoValue}>{selectedReport?.priority || "-"}</Text>
+                  </View>
+
+                  <View style={styles.infoLine}>
+                    <MaterialIcons name="place" size={18} color="#64748B" />
+                    <Text style={styles.infoLabel}>Adresse</Text>
+                    <Text style={styles.infoValue}>{selectedReport?.address || "-"}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.descriptionWrap}>
+                  <Text style={styles.descriptionTitle}>Beschreibung</Text>
+                  <Text style={styles.modalDescription}>
+                    {selectedReport?.description || "Keine Beschreibung vorhanden."}
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                    style={styles.modalCloseButton}
+                    onPress={() => setSelectedReport(null)}
+                >
+                  <Text style={styles.modalCloseText}>Schließen</Text>
+                </TouchableOpacity>
+              </ScrollView>
             </View>
           </View>
         </Modal>
@@ -338,6 +436,33 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 
+  reportBottomRow: {
+    marginTop: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  reportMetaText: {
+    color: "#64748B",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+
+  statusPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+  },
+
+  statusPillText: {
+    fontSize: 12,
+    fontWeight: "800",
+  },
+
   status: {
     marginTop: 10,
     fontSize: 15,
@@ -360,49 +485,108 @@ const styles = StyleSheet.create({
 
   modalCard: {
     width: "100%",
-    maxWidth: 360,
+    maxWidth: 390,
+    maxHeight: "88%",
     backgroundColor: "#FFFFFF",
-    borderRadius: 20,
-    padding: 18,
+    borderRadius: 24,
+    padding: 16,
     elevation: 8,
   },
 
-  modalBadge: {
-    alignSelf: "flex-start",
-    backgroundColor: "#EAF2EC",
-    color: "#2F4630",
-    fontWeight: "800",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
+  modalHeaderRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
     marginBottom: 10,
   },
 
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#111827",
-    marginBottom: 12,
+  iconCloseButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "#F1F5F9",
+    alignItems: "center",
+    justifyContent: "center",
   },
 
-  modalLine: {
+  modalTitle: {
+    flex: 1,
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#111827",
+  },
+
+  modalMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 14,
+  },
+
+  modalReportId: {
+    color: "#64748B",
+    fontWeight: "700",
+    fontSize: 12,
+  },
+
+  modalImage: {
+    width: "100%",
+    height: 190,
+    borderRadius: 14,
+    marginBottom: 14,
+  },
+
+  modalInfoCard: {
+    backgroundColor: "#F8FAFC",
+    borderRadius: 14,
+    padding: 12,
+    gap: 10,
+  },
+
+  infoLine: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+
+  infoLabel: {
+    minWidth: 66,
+    color: "#64748B",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+
+  infoValue: {
+    flex: 1,
+    color: "#0F172A",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+
+  descriptionWrap: {
+    marginTop: 14,
+    backgroundColor: "#FFFFFF",
+  },
+
+  descriptionTitle: {
+    color: "#334155",
     fontSize: 14,
-    color: "#374151",
+    fontWeight: "800",
     marginBottom: 6,
   },
 
   modalDescription: {
-    marginTop: 10,
     color: "#111827",
     lineHeight: 20,
+    fontSize: 14,
   },
 
   modalCloseButton: {
-    marginTop: 16,
-    alignSelf: "flex-end",
+    marginTop: 18,
     backgroundColor: "#5D845C",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
+    paddingVertical: 12,
+    alignItems: "center",
     borderRadius: 12,
   },
 

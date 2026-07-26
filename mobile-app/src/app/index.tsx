@@ -21,13 +21,23 @@ export default function LoginScreen() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
+    const [loading, setLoading] = useState(false);
 
     const handleLogin = async () => {
+        const normalizedEmail = email.trim().toLowerCase();
+        const normalizedPassword = password;
+
+        if (!normalizedEmail || !normalizedPassword) {
+            Alert.alert("Fehler", "Bitte E-Mail und Passwort eingeben.");
+            return;
+        }
+
         try {
+            setLoading(true);
 
             const response = await loginUser(
-                email,
-                password
+                normalizedEmail,
+                normalizedPassword
             );
 
             console.log(response);
@@ -47,7 +57,7 @@ export default function LoginScreen() {
 
             await login(token, response?.user);
 
-            router.replace("/(tabs)");
+            router.replace("/(tabs)/map");
 
         } catch (error: any) {
 
@@ -57,6 +67,8 @@ export default function LoginScreen() {
                 "Fehler",
                 error?.message || "Ungültige Anmeldedaten"
             );
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -121,11 +133,12 @@ export default function LoginScreen() {
                 </View>
 
                 <TouchableOpacity
-                    style={styles.loginButton}
+                    style={[styles.loginButton, loading && { opacity: 0.7 }]}
                     onPress={handleLogin}
+                    disabled={loading}
                 >
                     <Text style={styles.loginButtonText}>
-                        Anmelden
+                        {loading ? "Anmelden..." : "Anmelden"}
                     </Text>
                 </TouchableOpacity>
 

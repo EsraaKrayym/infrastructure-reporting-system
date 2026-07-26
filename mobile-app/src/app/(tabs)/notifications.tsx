@@ -23,6 +23,18 @@ type NotificationItem = {
   read: boolean;
 };
 
+type StoredStatusEvent = {
+  id: string;
+  reportId: string;
+  title: string;
+  message: string;
+  time: string;
+};
+
+const READ_STORAGE_KEY = "mobile-app:readNotifications";
+const STATUS_SNAPSHOT_KEY = "mobile-app:reportStatusSnapshot";
+const STATUS_EVENTS_KEY = "mobile-app:statusChangeEvents";
+
 export default function NotificationsTab() {
   const auth = useContext(AuthContext) as { token?: string | null } | null;
   const token = auth?.token ?? null;
@@ -73,8 +85,64 @@ export default function NotificationsTab() {
         getPendingReports(),
       ]);
 
-      const readRaw = await AsyncStorage.getItem("mobile-app:readNotifications");
+      const [readRaw, statusSnapshotRaw, statusEventsRaw] = await Promise.all([
+        AsyncStorage.getItem(READ_STORAGE_KEY),
+        AsyncStorage.getItem(STATUS_SNAPSHOT_KEY),
+        AsyncStorage.getItem(STATUS_EVENTS_KEY),
+      ]);
+
       const readMap = readRaw ? (JSON.parse(readRaw) as Record<string, boolean>) : {};
+      const statusSnapshot = statusSnapshotRaw
+        ? (JSON.parse(statusSnapshotRaw) as Record<string, string>)
+        : {};
+
+      const storedEvents = statusEventsRaw
+        ? ((JSON.parse(statusEventsRaw) as StoredStatusEvent[]) || [])
+            .filter((event) => !!event?.id)
+        : [];
+
+      const nextSnapshot: Record<string, string> = { ...statusSnapshot };
+      const newEvents: StoredStatusEvent[] = [];
+
+      (Array.isArray(reports) ? reports : []).forEach((report) => {
+        const reportId = String(report?.id ?? "");
+        if (!reportId) return;
+
+        const currentStatus = normalizeStatus(String(report?.status || "Neu"));
+        const previousStatus = statusSnapshot[reportId];
+        const isNonInitialStatus = currentStatus !== "Neu";
+
+        if (previousStatus && previousStatus !== currentStatus) {
+          const now = new Date();
+          const title = report?.title || `Meldung #${reportId}`;
+          newEvents.push({
+            id: `status-change-${reportId}-${now.getTime()}`,
+            reportId,
+            title: `Status geändert: ${title}`,
+            message: `Deine Meldung wurde von "${previousStatus}" auf "${currentStatus}" aktualisiert.`,
+            time: now.toISOString(),
+          });
+        } else if (!previousStatus && isNonInitialStatus) {
+          const now = new Date();
+          const title = report?.title || `Meldung #${reportId}`;
+          newEvents.push({
+            id: `status-sync-${reportId}-${now.getTime()}`,
+            reportId,
+            title: `Status-Update: ${title}`,
+            message: `Deine Meldung ist jetzt im Status "${currentStatus}".`,
+            time: now.toISOString(),
+          });
+        }
+
+        nextSnapshot[reportId] = currentStatus;
+      });
+
+      const mergedEvents = [...newEvents, ...storedEvents].slice(0, 80);
+
+      await Promise.all([
+        AsyncStorage.setItem(STATUS_SNAPSHOT_KEY, JSON.stringify(nextSnapshot)),
+        AsyncStorage.setItem(STATUS_EVENTS_KEY, JSON.stringify(mergedEvents)),
+      ]);
 
       const sortedReports = (Array.isArray(reports) ? reports : [])
         .slice()
@@ -96,6 +164,15 @@ export default function NotificationsTab() {
         };
       });
 
+      const statusChangeNotifications: NotificationItem[] = mergedEvents.map((event) => ({
+        id: event.id,
+        type: "status",
+        title: event.title,
+        message: event.message,
+        time: formatTime(event.time),
+        read: !!readMap[event.id],
+      }));
+
       const queueNotification: NotificationItem[] = pending.length
         ? [
             {
@@ -109,7 +186,7 @@ export default function NotificationsTab() {
           ]
         : [];
 
-      setNotifications([...queueNotification, ...reportNotifications]);
+      setNotifications([...queueNotification, ...statusChangeNotifications, ...reportNotifications]);
     } catch (err: any) {
       setError(err?.message || "Benachrichtigungen konnten nicht geladen werden");
       setNotifications([]);
@@ -121,6 +198,12 @@ export default function NotificationsTab() {
   useFocusEffect(
     useCallback(() => {
       loadNotifications();
+
+      const interval = setInterval(() => {
+        loadNotifications();
+      }, 15000);
+
+      return () => clearInterval(interval);
     }, [loadNotifications])
   );
 
@@ -142,7 +225,7 @@ export default function NotificationsTab() {
         acc[item.id] = true;
         return acc;
       }, {});
-      AsyncStorage.setItem("mobile-app:readNotifications", JSON.stringify(map));
+      AsyncStorage.setItem(READ_STORAGE_KEY, JSON.stringify(map));
       return updated;
     });
   };
@@ -154,7 +237,7 @@ export default function NotificationsTab() {
         acc[item.id] = !!item.read;
         return acc;
       }, {});
-      AsyncStorage.setItem("mobile-app:readNotifications", JSON.stringify(map));
+      AsyncStorage.setItem(READ_STORAGE_KEY, JSON.stringify(map));
       return updated;
     });
   };

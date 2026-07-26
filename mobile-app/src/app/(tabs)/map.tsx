@@ -9,6 +9,7 @@ import {
   Platform,
   Image,
   ScrollView,
+  KeyboardAvoidingView,
 } from "react-native";
 import * as Location from "expo-location";
 import { createReport, getReports, syncPendingReports } from "@/services/api";
@@ -161,9 +162,11 @@ export default function MapScreen() {
   };
 
   const resolveLocationFromSearch = async () => {
-    if (reportLocation) return reportLocation;
+    const trimmedSearch = search.trim();
 
-    if (search.trim()) {
+    // Wenn Nutzer einen Ort eingibt (z. B. "Berlin"), hat die Suche Priorität
+    // vor einer ggf. zuvor gesetzten Standard-Position.
+    if (trimmedSearch) {
       const suggestions = await fetchSearchSuggestions(search);
       const first = suggestions?.[0];
       if (first?.lat && first?.lon) {
@@ -180,6 +183,8 @@ export default function MapScreen() {
         }
       }
     }
+
+    if (reportLocation) return reportLocation;
 
     return userLocation || null;
   };
@@ -547,14 +552,21 @@ export default function MapScreen() {
 
         {showModal && (
             <Pressable style={styles.bottomSheetOverlay} onPress={() => setShowModal(false)}>
-              <Pressable
-                  style={styles.bottomSheet}
-                  onPress={(e) => (e.stopPropagation ? e.stopPropagation() : undefined)}
+              <KeyboardAvoidingView
+                  style={styles.bottomSheetKeyboardWrap}
+                  behavior={Platform.OS === "ios" ? "padding" : "height"}
+                  keyboardVerticalOffset={Platform.OS === "ios" ? 24 : 0}
               >
-                <ScrollView
-                    contentContainerStyle={styles.bottomSheetContent}
-                    showsVerticalScrollIndicator={false}
+                <Pressable
+                    style={styles.bottomSheet}
+                    onPress={(e) => (e.stopPropagation ? e.stopPropagation() : undefined)}
                 >
+                  <ScrollView
+                      contentContainerStyle={styles.bottomSheetContent}
+                      showsVerticalScrollIndicator={false}
+                      keyboardShouldPersistTaps="handled"
+                      keyboardDismissMode="on-drag"
+                  >
                   <View style={styles.sheetHeader}>
                     <TouchableOpacity onPress={() => setShowModal(false)}>
                       <MaterialIcons name="close" size={26} color="#333" />
@@ -668,8 +680,9 @@ export default function MapScreen() {
                   <TouchableOpacity style={styles.sendBtn} onPress={sendReport}>
                     <Text style={styles.sendText}>Report senden</Text>
                   </TouchableOpacity>
-                </ScrollView>
-              </Pressable>
+                  </ScrollView>
+                </Pressable>
+              </KeyboardAvoidingView>
             </Pressable>
         )}
       </View>
@@ -874,6 +887,9 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.4)",
     justifyContent: "flex-end",
   },
+  bottomSheetKeyboardWrap: {
+    justifyContent: "flex-end",
+  },
   bottomSheet: {
     backgroundColor: "#ffffff",
     paddingTop: 20,
@@ -884,7 +900,7 @@ const styles = StyleSheet.create({
   },
   bottomSheetContent: {
     paddingHorizontal: 20,
-    paddingBottom: 24,
+    paddingBottom: 64,
   },
   sheetHeader: {
     flexDirection: "row",

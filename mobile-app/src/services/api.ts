@@ -1,5 +1,7 @@
 //const API_URL = "http://192.168.178.30:5000/api";
-const API_URL = "https://cityreport-backend.onrender.com/api";
+const API_URL =
+    (process.env.EXPO_PUBLIC_API_URL || "").trim() ||
+    "https://cityreport-backend.onrender.com/api";
 import { getPendingReports, removePendingReport, savePendingReport } from "./offline";
 
 type ReportPayload = {

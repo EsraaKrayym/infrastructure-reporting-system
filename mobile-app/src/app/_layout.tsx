@@ -5,8 +5,10 @@ export default function RootLayout() {
     return (
         <AuthProvider>
             <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="index" />     {/* Login */}
-                <Stack.Screen name="(tabs)" />    {/* App nach Login */}
+                <Stack.Screen name="index" />
+                <Stack.Screen name="(tabs)" />
+                <Stack.Screen name="register" />
+                <Stack.Screen name="forgot-password" />
             </Stack>
         </AuthProvider>
     );

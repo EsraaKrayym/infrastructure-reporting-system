@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { getCurrentUser, getReports, updateCurrentUser } from "../services/api";
 import "../css/Settings.css";
 
 const APP_VERSION = "v1.0.0";
 
 export default function Settings() {
+    const navigate = useNavigate();
     const currentUser = JSON.parse(localStorage.getItem("user") || "null");
     const isAdmin = currentUser?.role === "admin";
     const isCaseworker = currentUser?.role === "caseworker";
@@ -106,6 +107,12 @@ export default function Settings() {
         }
     };
 
+    const handleLogout = () => {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        navigate("/login");
+    };
+
     return (
         <div className="layout">
             <div className="sidebar">
@@ -139,9 +146,14 @@ export default function Settings() {
                         <h1>Einstellungen</h1>
                         <p>Verwalte Profil, Arbeitsansicht und Live-Systeminformationen.</p>
                     </div>
-                    <button className="save-btn" onClick={handleSave} disabled={saving}>
-                        {saving ? "Speichern..." : "Änderungen speichern"}
-                    </button>
+                    <div className="settings-actions">
+                        <button className="save-btn" onClick={handleSave} disabled={saving}>
+                            {saving ? "Speichern..." : "Änderungen speichern"}
+                        </button>
+                        <button className="logout-btn" type="button" onClick={handleLogout}>
+                            Abmelden
+                        </button>
+                    </div>
                 </div>
 
                 {loading && <p>⏳ Einstellungen werden geladen...</p>}
