@@ -10,6 +10,11 @@ Das System besteht aus **3 Komponenten**:
 2. **Admin-Web** - React Web-Interface für Verwaltung und Verarbeitung
 3. **Mobile-App** - React Native Expo App für Bürgermeldungen
 
+## 🌐 Live Links
+
+- **Admin-Web (Vercel):** https://infrastructure-reporting-system.vercel.app
+- **Backend API (Render):** https://cityreport-backend.onrender.com
+
 ---
 
 ## 🛠️ Voraussetzungen
@@ -43,12 +48,27 @@ NODE_ENV=development
 # JWT Authentifizierung
 JWT_SECRET=your-super-secret-key-change-this
 
+# Optional: Standard-Admin beim Serverstart
+DEFAULT_ADMIN_EMAIL=admin@cityreport.de
+DEFAULT_ADMIN_PASSWORD=123456
+DEFAULT_ADMIN_NAME=Administrator
+
 # PostgreSQL Datenbank (Cloud URL)
 DATABASE_URL=postgresql://user:password@host:port/database
 
 # oder lokal:
 # DATABASE_URL=postgresql://postgres:password@localhost:5432/infrastructure_db
 ```
+
+### Mobile-App (.env)
+
+Optional im `mobile-app/` Ordner eine `.env` Datei erstellen:
+
+```env
+EXPO_PUBLIC_API_URL=https://cityreport-backend.onrender.com/api
+```
+
+Falls nicht gesetzt, nutzt die App bereits standardmäßig diese URL.
 
 ---
 
@@ -253,6 +273,17 @@ Nutze [Render.com](https://render.com/) oder [Supabase](https://supabase.com/):
 2. Connection String kopieren
 3. In `.env` als `DATABASE_URL` einfügen
 
+### Migrationen ausführen
+
+Im `backend/` Ordner stehen SQL-Migrationen bereit:
+
+```bash
+npm run migrate
+npm run migrate:normalize
+npm run migrate:fix-fk
+npm run migrate:cleanup
+```
+
 ---
 
 ## 🐛 Troubleshooting
@@ -290,6 +321,15 @@ npm start
 ---
 
 ## 🚀 Deployment
+
+### Live Website
+
+- **Admin-Web (Vercel):** https://infrastructure-reporting-system.vercel.app
+
+### API-Konfiguration im Frontend
+
+- Admin-Web verwendet aktuell die API-URL direkt in `admin-web/src/services/api.js`.
+- Mobile-App verwendet `EXPO_PUBLIC_API_URL` (oder Fallback auf Render-URL).
 
 ### Backend auf Render.com
 1. Repository auf GitHub pushen
