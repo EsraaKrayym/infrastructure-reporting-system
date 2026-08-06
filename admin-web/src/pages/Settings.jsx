@@ -15,11 +15,8 @@ export default function Settings() {
         displayName: "",
         email: "",
         password: "",
-        language: localStorage.getItem("settings_language") || "de",
         emailNotifications: localStorage.getItem("settings_email_notifications") !== "false",
         pushNotifications: localStorage.getItem("settings_push_notifications") !== "false",
-        compactMode: localStorage.getItem("settings_compact_mode") === "true",
-        autoRefresh: localStorage.getItem("settings_auto_refresh") !== "false",
     });
 
     const [profile, setProfile] = useState(currentUser);
@@ -109,11 +106,8 @@ export default function Settings() {
         setError("");
 
         try {
-            localStorage.setItem("settings_language", form.language);
             localStorage.setItem("settings_email_notifications", String(form.emailNotifications));
             localStorage.setItem("settings_push_notifications", String(form.pushNotifications));
-            localStorage.setItem("settings_compact_mode", String(form.compactMode));
-            localStorage.setItem("settings_auto_refresh", String(form.autoRefresh));
 
             const res = await updateCurrentUser({
                 name: form.displayName.trim(),
@@ -213,14 +207,6 @@ export default function Settings() {
                             placeholder="Leer lassen, wenn unverändert"
                         />
 
-                        <label>Sprache</label>
-                        <select
-                            value={form.language}
-                            onChange={(e) => onChange("language", e.target.value)}
-                        >
-                            <option value="de">Deutsch</option>
-                            <option value="en">English</option>
-                        </select>
                     </section>
 
                     <section className="settings-card">
@@ -247,34 +233,6 @@ export default function Settings() {
                                 type="checkbox"
                                 checked={form.pushNotifications}
                                 onChange={(e) => handlePushToggle(e.target.checked)}
-                            />
-                        </div>
-                    </section>
-
-                    <section className="settings-card">
-                        <h3>Arbeitsansicht</h3>
-
-                        <div className="toggle-row">
-                            <div>
-                                <strong>Kompakter Modus</strong>
-                                <p>Zeigt mehr Datensätze auf kleinerem Raum.</p>
-                            </div>
-                            <input
-                                type="checkbox"
-                                checked={form.compactMode}
-                                onChange={(e) => onChange("compactMode", e.target.checked)}
-                            />
-                        </div>
-
-                        <div className="toggle-row">
-                            <div>
-                                <strong>Automatische Aktualisierung</strong>
-                                <p>Lädt neue Daten regelmäßig im Hintergrund.</p>
-                            </div>
-                            <input
-                                type="checkbox"
-                                checked={form.autoRefresh}
-                                onChange={(e) => onChange("autoRefresh", e.target.checked)}
                             />
                         </div>
                     </section>
