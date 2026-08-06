@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState, useContext } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState, useContext } from "react";
 import {
   View,
   StyleSheet,
@@ -11,11 +11,13 @@ import {
   ScrollView,
   KeyboardAvoidingView,
 } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import * as Location from "expo-location";
 import { createReport, getReports, syncPendingReports } from "@/services/api";
 import { AuthContext } from "@/context/AuthContext";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import { getLocationEnabled } from "@/services/preferences";
 
 const getCategoryIconName = (category: string): string => {
   const key = String(category || "").toLowerCase().replace(/\s/g, "_");
@@ -100,9 +102,21 @@ export default function MapScreen() {
   const [photo, setPhoto] = useState<string | null>(null);
   const [selectedReport, setSelectedReport] = useState<any>(null);
   const [locating, setLocating] = useState(false);
+  const [locationEnabled, setLocationEnabled] = useState(true);
+  const [locationSettingLoaded, setLocationSettingLoaded] = useState(false);
 
   const selectedCategoryLabel =
     CATEGORY_OPTIONS.find((item) => item.value === category)?.label || "Infrastrukturmeldung";
+
+  const loadLocationSetting = useCallback(async () => {
+    const enabled = await getLocationEnabled();
+    setLocationEnabled(enabled);
+    setLocationSettingLoaded(true);
+
+    if (!enabled) {
+      setUserLocation(null);
+    }
+  }, []);
 
   useEffect(() => {
     if (!token) return;
@@ -128,9 +142,20 @@ export default function MapScreen() {
   }, [token]);
 
   useEffect(() => {
+    loadLocationSetting();
+  }, [loadLocationSetting]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadLocationSetting();
+    }, [loadLocationSetting])
+  );
+
+  useEffect(() => {
+    if (!locationSettingLoaded || !locationEnabled) return;
     getUserLocation();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [locationSettingLoaded, locationEnabled]);
 
   const loadReports = async () => {
     if (!token) return;
@@ -192,7 +217,7 @@ export default function MapScreen() {
   const sendReport = async () => {
     const loc = await resolveLocationFromSearch();
     if (!loc) {
-      alert("Standort wird noch ermittelt. Bitte kurz warten.");
+      alert("Kein Standort verfügbar. Bitte Adresse suchen oder Standortzugriff in den Einstellungen aktivieren.");
       return;
     }
 
@@ -357,6 +382,7 @@ export default function MapScreen() {
 
   const getUserLocation = async () => {
     if (isWeb) return;
+    if (!locationEnabled) return;
 
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== "granted") return;
@@ -387,6 +413,10 @@ export default function MapScreen() {
 
   const refreshModalLocation = async () => {
     if (isWeb) return;
+    if (!locationEnabled) {
+      alert("Standortzugriff ist deaktiviert. Bitte in den Einstellungen aktivieren.");
+      return;
+    }
     setLocating(true);
     try {
       const location = await Location.getCurrentPositionAsync({});
@@ -477,7 +507,7 @@ export default function MapScreen() {
         <MapView
             ref={mapRef}
             style={styles.map}
-            showsUserLocation={true}
+            showsUserLocation={locationEnabled}
             followsUserLocation={false}
             initialRegion={{
               latitude: 52.52,
@@ -486,7 +516,7 @@ export default function MapScreen() {
               longitudeDelta: 0.05,
             }}
         >
-          {userLocation && (
+          {locationEnabled && userLocation && (
               <Marker
                   coordinate={{
                     latitude: userLocation.latitude,
@@ -629,9 +659,9 @@ export default function MapScreen() {
                         placeholder="Adresse wird automatisch gesetzt"
                     />
                     <TouchableOpacity
-                        style={styles.locateBtn}
+                      style={[styles.locateBtn, !locationEnabled && styles.locateBtnDisabled]}
                         onPress={refreshModalLocation}
-                        disabled={locating}
+                      disabled={locating || !locationEnabled}
                     >
                       <MaterialIcons
                           name={locating ? "hourglass-empty" : "my-location"}
@@ -643,6 +673,12 @@ export default function MapScreen() {
                   {reportLocation && (
                     <Text style={styles.coordsText}>
                       📍 {reportLocation.latitude.toFixed(5)}, {reportLocation.longitude.toFixed(5)}
+                    </Text>
+                  )}
+
+                  {!locationEnabled && (
+                    <Text style={styles.locationHintText}>
+                      Standortzugriff ist deaktiviert. Bitte Adresse manuell suchen/eingeben.
                     </Text>
                   )}
 
@@ -978,11 +1014,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  locateBtnDisabled: {
+    opacity: 0.5,
+  },
   coordsText: {
     fontSize: 11,
     color: "#64748b",
     marginBottom: 6,
     marginLeft: 4,
+  },
+  locationHintText: {
+    fontSize: 12,
+    color: "#b45309",
+    marginBottom: 8,
+    marginLeft: 4,
+    fontWeight: "600",
   },
 
   cameraBtn: {

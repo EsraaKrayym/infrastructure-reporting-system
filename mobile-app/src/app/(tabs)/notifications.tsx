@@ -13,6 +13,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { AuthContext } from "@/context/AuthContext";
 import { getReports } from "@/services/api";
 import { getPendingReports } from "@/services/offline";
+import { getPushEnabled } from "@/services/preferences";
 
 type NotificationItem = {
   id: string;
@@ -41,6 +42,7 @@ export default function NotificationsTab() {
 
   const [activeFilter, setActiveFilter] = useState<"alle" | "ungelesen" | "status">("alle");
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [pushEnabled, setPushEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -70,6 +72,13 @@ export default function NotificationsTab() {
   };
 
   const loadNotifications = useCallback(async () => {
+    if (!pushEnabled) {
+      setNotifications([]);
+      setError("");
+      setLoading(false);
+      return;
+    }
+
     if (!token) {
       setNotifications([]);
       setLoading(false);
@@ -193,18 +202,45 @@ export default function NotificationsTab() {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [pushEnabled, token]);
 
   useFocusEffect(
     useCallback(() => {
-      loadNotifications();
+      let cancelled = false;
+
+      const run = async () => {
+        const enabled = await getPushEnabled();
+        if (cancelled) return;
+
+        setPushEnabled(enabled);
+
+        if (!enabled) {
+          setNotifications([]);
+          setError("");
+          setLoading(false);
+          return;
+        }
+
+        await loadNotifications();
+      };
+
+      run();
+
+      if (!pushEnabled) {
+        return () => {
+          cancelled = true;
+        };
+      }
 
       const interval = setInterval(() => {
         loadNotifications();
       }, 15000);
 
-      return () => clearInterval(interval);
-    }, [loadNotifications])
+      return () => {
+        cancelled = true;
+        clearInterval(interval);
+      };
+    }, [loadNotifications, pushEnabled])
   );
 
   const unreadCount = useMemo(
@@ -302,20 +338,28 @@ export default function NotificationsTab() {
 
       {!!error && <Text style={styles.errorText}>❌ {error}</Text>}
 
-      {loading ? (
+      {!pushEnabled ? (
+        <View style={styles.emptyCard}>
+          <MaterialIcons name="notifications-off" size={30} color="#94A3B8" />
+          <Text style={styles.emptyTitle}>Push-Mitteilungen sind deaktiviert</Text>
+          <Text style={styles.emptyText}>Aktiviere sie in den Einstellungen, um Benachrichtigungen zu erhalten.</Text>
+        </View>
+      ) : null}
+
+      {pushEnabled && loading ? (
         <View style={styles.loadingWrap}>
           <ActivityIndicator size="large" color="#5D845C" />
         </View>
       ) : null}
 
-      {!loading && filteredNotifications.length === 0 ? (
+      {pushEnabled && !loading && filteredNotifications.length === 0 ? (
         <View style={styles.emptyCard}>
           <MaterialIcons name="notifications-none" size={30} color="#94A3B8" />
           <Text style={styles.emptyTitle}>Keine Benachrichtigungen</Text>
           <Text style={styles.emptyText}>Für diesen Filter sind aktuell keine Einträge vorhanden.</Text>
         </View>
       ) : (
-        !loading && filteredNotifications.map((item) => (
+        pushEnabled && !loading && filteredNotifications.map((item) => (
           <TouchableOpacity
             key={item.id}
             activeOpacity={0.9}

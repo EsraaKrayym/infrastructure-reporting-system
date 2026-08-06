@@ -10,7 +10,12 @@ import {
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+    getLocationEnabled,
+    getPushEnabled,
+    setLocationEnabled as persistLocationEnabled,
+    setPushEnabled as persistPushEnabled,
+} from "@/services/preferences";
 
 import { AuthContext } from "@/context/AuthContext";
 
@@ -28,21 +33,17 @@ export default function SettingsScreen() {
     useEffect(() => {
         const loadSettings = async () => {
             const [push, location] = await Promise.all([
-                AsyncStorage.getItem("settings:push"),
-                AsyncStorage.getItem("settings:location"),
+                getPushEnabled(),
+                getLocationEnabled(),
             ]);
 
-            if (push !== null) setPushEnabled(push === "true");
-            if (location !== null) setLocationEnabled(location === "true");
+            setPushEnabled(push);
+            setLocationEnabled(location);
             setLoaded(true);
         };
 
         loadSettings();
     }, []);
-
-    const persist = async (key: string, value: boolean) => {
-        await AsyncStorage.setItem(key, String(value));
-    };
 
     const handleLogout = async () => {
         Alert.alert("Abmelden", "Möchten Sie sich wirklich abmelden?", [
@@ -85,7 +86,7 @@ export default function SettingsScreen() {
                         value={pushEnabled}
                         onValueChange={(value) => {
                             setPushEnabled(value);
-                            if (loaded) persist("settings:push", value);
+                            if (loaded) persistPushEnabled(value);
                         }}
                         trackColor={{ false: "#cbd5e1", true: "#86efac" }}
                         thumbColor={pushEnabled ? "#16a34a" : "#94a3b8"}
@@ -109,7 +110,7 @@ export default function SettingsScreen() {
                         value={locationEnabled}
                         onValueChange={(value) => {
                             setLocationEnabled(value);
-                            if (loaded) persist("settings:location", value);
+                            if (loaded) persistLocationEnabled(value);
                         }}
                         trackColor={{ false: "#cbd5e1", true: "#86efac" }}
                         thumbColor={locationEnabled ? "#16a34a" : "#94a3b8"}
