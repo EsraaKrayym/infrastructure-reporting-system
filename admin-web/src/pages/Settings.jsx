@@ -75,6 +75,33 @@ export default function Settings() {
         setMessage("");
     };
 
+    const handlePushToggle = async (checked) => {
+        if (checked && typeof window !== "undefined" && "Notification" in window) {
+            if (Notification.permission === "default") {
+                try {
+                    const permission = await Notification.requestPermission();
+                    if (permission !== "granted") {
+                        setError("Push-Berechtigung wurde nicht erlaubt. Browser-Push bleibt deaktiviert.");
+                        onChange("pushNotifications", false);
+                        return;
+                    }
+                } catch {
+                    setError("Push-Berechtigung konnte nicht abgefragt werden.");
+                    onChange("pushNotifications", false);
+                    return;
+                }
+            }
+
+            if (Notification.permission === "denied") {
+                setError("Push-Berechtigung ist im Browser blockiert. Bitte in Browser-Einstellungen erlauben.");
+                onChange("pushNotifications", false);
+                return;
+            }
+        }
+
+        onChange("pushNotifications", checked);
+    };
+
     const handleSave = async (e) => {
         e.preventDefault();
         setSaving(true);
@@ -219,7 +246,7 @@ export default function Settings() {
                             <input
                                 type="checkbox"
                                 checked={form.pushNotifications}
-                                onChange={(e) => onChange("pushNotifications", e.target.checked)}
+                                onChange={(e) => handlePushToggle(e.target.checked)}
                             />
                         </div>
                     </section>

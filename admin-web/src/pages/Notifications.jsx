@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { getUsers, getReports } from "../services/api";
 import "../css/Notifications.css";
@@ -7,6 +7,9 @@ const formatDateTime = (value) => {
     if (!value) return "Unbekannt";
     return new Date(value).toLocaleString("de-DE");
 };
+
+const getEmailNotificationsEnabled = () => localStorage.getItem("settings_email_notifications") !== "false";
+const getPushNotificationsEnabled = () => localStorage.getItem("settings_push_notifications") !== "false";
 
 export default function Notifications() {
     const currentUser = JSON.parse(localStorage.getItem("user") || "null");
@@ -17,17 +20,69 @@ export default function Notifications() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [lastUpdated, setLastUpdated] = useState(null);
+    const [emailEnabled, setEmailEnabled] = useState(getEmailNotificationsEnabled());
+    const [pushEnabled, setPushEnabled] = useState(getPushNotificationsEnabled());
+
+    const initializedPushRef = useRef(false);
+
+    const pushStorageKey = useMemo(() => {
+        const role = isAdmin ? "admin" : isCaseworker ? "caseworker" : "other";
+        return `web:seenNotificationIds:${role}`;
+    }, [isAdmin, isCaseworker]);
+
+    const triggerBrowserPushForNewItems = (nextItems) => {
+        if (!pushEnabled) return;
+        if (typeof window === "undefined" || !("Notification" in window)) return;
+        if (Notification.permission !== "granted") return;
+
+        const previousRaw = localStorage.getItem(pushStorageKey);
+        const previousIds = previousRaw ? JSON.parse(previousRaw) : [];
+        const prevSet = new Set(Array.isArray(previousIds) ? previousIds.map(String) : []);
+        const nextIds = nextItems.map((item) => String(item.id));
+
+        if (!initializedPushRef.current) {
+            initializedPushRef.current = true;
+            localStorage.setItem(pushStorageKey, JSON.stringify(nextIds.slice(0, 120)));
+            return;
+        }
+
+        const newlyArrived = nextItems.filter((item) => !prevSet.has(String(item.id))).slice(0, 5);
+
+        newlyArrived.forEach((item) => {
+            try {
+                new Notification(item.title, { body: item.message });
+            } catch {
+                // ignore browser notification errors
+            }
+        });
+
+        localStorage.setItem(pushStorageKey, JSON.stringify(nextIds.slice(0, 120)));
+    };
 
     const loadNotifications = async () => {
         try {
             setLoading(true);
             setError("");
 
+            const emailSetting = getEmailNotificationsEnabled();
+            const pushSetting = getPushNotificationsEnabled();
+            setEmailEnabled(emailSetting);
+            setPushEnabled(pushSetting);
+
+            if (!emailSetting) {
+                setItems([]);
+                setLastUpdated(new Date());
+                setLoading(false);
+                return;
+            }
+
+            let notifications = [];
+
             if (isAdmin) {
                 const res = await getUsers();
                 const users = Array.isArray(res.data) ? res.data : [];
 
-                const notifications = users
+                notifications = users
                     .filter((u) => u.role !== "admin")
                     .slice(0, 30)
                     .map((u) => ({
@@ -38,13 +93,11 @@ export default function Notifications() {
                         time: u.created_at || null,
                         meta: `Benutzer-ID #${u.id}`,
                     }));
-
-                setItems(notifications);
             } else if (isCaseworker) {
                 const res = await getReports();
                 const reports = Array.isArray(res.data) ? res.data : [];
 
-                const notifications = reports
+                notifications = reports
                     .filter((r) => ["neu", "open", "pending"].includes(String(r.status || "").toLowerCase()))
                     .slice(0, 40)
                     .map((r) => ({
@@ -55,11 +108,12 @@ export default function Notifications() {
                         time: r.created_at || null,
                         meta: `Report #${r.id} • Bürger-ID #${r.user_id ?? "?"}`,
                     }));
-
-                setItems(notifications);
             } else {
-                setItems([]);
+                notifications = [];
             }
+
+            setItems(notifications);
+            triggerBrowserPushForNewItems(notifications);
 
             setLastUpdated(new Date());
         } catch (err) {
@@ -72,10 +126,16 @@ export default function Notifications() {
 
     useEffect(() => {
         loadNotifications();
+
+        const autoRefreshEnabled = localStorage.getItem("settings_auto_refresh") !== "false";
+        if (!autoRefreshEnabled || !emailEnabled) {
+            return undefined;
+        }
+
         const t = setInterval(loadNotifications, 15000);
         return () => clearInterval(t);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isAdmin, isCaseworker]);
+    }, [isAdmin, isCaseworker, emailEnabled]);
 
     const headline = useMemo(() => {
         if (isAdmin) return "Admin-Benachrichtigungen";
@@ -119,6 +179,9 @@ export default function Notifications() {
                             {isCaseworker && "Du siehst neue Bürgermeldungen."}
                             {!isAdmin && !isCaseworker && "Keine Benachrichtigungen für diese Rolle."}
                         </p>
+                        <p style={{ marginTop: 8, color: "#475569", fontSize: 13 }}>
+                            E-Mail: {emailEnabled ? "Aktiv" : "Deaktiviert"} • Push: {pushEnabled ? "Aktiv" : "Deaktiviert"}
+                        </p>
                     </div>
 
                     <button className="refresh-btn" onClick={loadNotifications} disabled={loading}>
@@ -137,8 +200,12 @@ export default function Notifications() {
 
                 {!loading && !error && items.length === 0 && (
                     <div className="empty-card">
-                        <h3>Keine neuen Benachrichtigungen</h3>
-                        <p>Aktuell gibt es keine neuen Ereignisse für deine Rolle.</p>
+                        <h3>{emailEnabled ? "Keine neuen Benachrichtigungen" : "Benachrichtigungen deaktiviert"}</h3>
+                        <p>
+                            {emailEnabled
+                                ? "Aktuell gibt es keine neuen Ereignisse für deine Rolle."
+                                : "Aktiviere E-Mail Benachrichtigungen in den Einstellungen, um neue Einträge zu erhalten."}
+                        </p>
                     </div>
                 )}
 
