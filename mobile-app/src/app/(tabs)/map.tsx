@@ -95,6 +95,7 @@ export default function MapScreen() {
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [address, setAddress] = useState("");
+  const [addressTouched, setAddressTouched] = useState(false);
   const [reportLocation, setReportLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("road_damage");
@@ -180,33 +181,57 @@ export default function MapScreen() {
     setCategory("road_damage");
     setPriority("medium");
     setPhoto(null);
-    if (!reportLocation && userLocation) {
+    setAddressTouched(false);
+    if (userLocation) {
       setReportLocation({ latitude: userLocation.latitude, longitude: userLocation.longitude });
+    } else {
+      setReportLocation(null);
     }
     setShowModal(true);
   };
 
   const resolveLocationFromSearch = async () => {
     const trimmedSearch = search.trim();
+    const trimmedAddress = address.trim();
+
+    const parseSuggestionLocation = (suggestion: any) => {
+      if (!suggestion?.lat || !suggestion?.lon) return null;
+
+      const lat = Number.parseFloat(suggestion.lat);
+      const lon = Number.parseFloat(suggestion.lon);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+
+      const addr = suggestion.address || {};
+      const line1 = [addr.road, addr.house_number].filter(Boolean).join(" ");
+      const line2 = [addr.postcode, addr.city || addr.town || addr.village || addr.county].filter(Boolean).join(" ");
+      const fullAddress = [line1, line2].filter(Boolean).join(", ") || suggestion.display_name;
+
+      setAddress(fullAddress);
+      setReportLocation({ latitude: lat, longitude: lon });
+      return { latitude: lat, longitude: lon };
+    };
+
+    if (addressTouched && trimmedAddress) {
+      const suggestions = await fetchSearchSuggestions(trimmedAddress);
+      const resolved = parseSuggestionLocation(suggestions?.[0]);
+
+      if (resolved) return resolved;
+
+      if (reportLocation) {
+        alert("Adresse konnte nicht eindeutig gefunden werden. Es wird die aktuelle Kartenposition verwendet.");
+        return reportLocation;
+      }
+
+      alert("Ort konnte nicht eindeutig gefunden werden. Bitte Ort über die Suche auswählen.");
+      return null;
+    }
 
     // Wenn Nutzer einen Ort eingibt (z. B. "Berlin"), hat die Suche Priorität
     // vor einer ggf. zuvor gesetzten Standard-Position.
     if (trimmedSearch) {
       const suggestions = await fetchSearchSuggestions(search);
-      const first = suggestions?.[0];
-      if (first?.lat && first?.lon) {
-        const lat = Number.parseFloat(first.lat);
-        const lon = Number.parseFloat(first.lon);
-        if (Number.isFinite(lat) && Number.isFinite(lon)) {
-          const addr = first.address || {};
-          const line1 = [addr.road, addr.house_number].filter(Boolean).join(" ");
-          const line2 = [addr.postcode, addr.city || addr.town || addr.village || addr.county].filter(Boolean).join(" ");
-          const fullAddress = [line1, line2].filter(Boolean).join(", ") || first.display_name;
-          setAddress(fullAddress);
-          setReportLocation({ latitude: lat, longitude: lon });
-          return { latitude: lat, longitude: lon };
-        }
-      }
+      const resolved = parseSuggestionLocation(suggestions?.[0]);
+      if (resolved) return resolved;
     }
 
     if (reportLocation) return reportLocation;
@@ -322,21 +347,45 @@ export default function MapScreen() {
 
     try {
       const runSearch = async (q: string) => {
-        const response = await fetch(
+        const endpoints = [
           `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=de&addressdetails=1&limit=6`,
-          {
-            headers: {
-              "User-Agent": "InfrastructureReportingApp/1.0",
-              "Accept-Language": "de-DE,de,en",
-            },
-          }
-        );
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&addressdetails=1&limit=6`,
+        ];
 
-        const data = await response.json();
-        return Array.isArray(data) ? data : [];
+        for (const endpoint of endpoints) {
+          try {
+            const response = await fetch(endpoint, {
+              headers: {
+                "Accept-Language": "de-DE,de,en",
+              },
+            });
+
+            if (!response.ok) {
+              continue;
+            }
+
+            const data = await response.json();
+            const rows = Array.isArray(data) ? data : [];
+            if (rows.length > 0) return rows;
+          } catch {
+            // try next endpoint
+          }
+        }
+
+        return [];
       };
 
-      let results = await runSearch(trimmed);
+      const queryVariants = [
+        trimmed,
+        trimmed.replace(/\s*,\s*/g, " "),
+        trimmed.replace(/\s+/g, " "),
+      ].filter(Boolean);
+
+      let results: any[] = [];
+      for (const variant of queryVariants) {
+        results = await runSearch(variant);
+        if (results.length > 0) break;
+      }
 
       if (results.length === 0) {
         const postalMatch = trimmed.match(/\b\d{5}\b/);
@@ -353,6 +402,26 @@ export default function MapScreen() {
           if (results.length === 0) {
             results = await runSearch(plz);
           }
+        }
+      }
+
+      if (results.length === 0 && !isWeb) {
+        try {
+          const native = await Location.geocodeAsync(trimmed);
+          if (Array.isArray(native) && native.length > 0) {
+            results = native.slice(0, 6).map((item, index) => ({
+              place_id: `native-${index}-${item.latitude}-${item.longitude}`,
+              lat: String(item.latitude),
+              lon: String(item.longitude),
+              display_name: trimmed,
+              address: {
+                road: trimmed,
+                city: "",
+              },
+            }));
+          }
+        } catch {
+          // fallback failed -> keep empty
         }
       }
 
@@ -376,6 +445,11 @@ export default function MapScreen() {
     const lat = parseFloat(result.lat);
     const lon = parseFloat(result.lon);
 
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+      alert("Ungültige Koordinaten für diesen Ort.");
+      return;
+    }
+
     setReportLocation({ latitude: lat, longitude: lon });
 
     mapRef.current?.animateToRegion({
@@ -387,13 +461,20 @@ export default function MapScreen() {
   };
 
   const searchLocation = async () => {
-    if (!search.trim()) {
+    const query = search.trim();
+
+    if (!query) {
       alert("Bitte einen Ort eingeben.");
       return;
     }
 
-    const results = await fetchSearchSuggestions(search);
-    if (results.length > 0) selectSearchResult(results[0]);
+    const results = await fetchSearchSuggestions(query);
+    if (results.length > 0) {
+      selectSearchResult(results[0]);
+      return;
+    }
+
+    alert("Kein passender Ort gefunden. Bitte Eingabe prüfen.");
   };
 
   const getUserLocation = async () => {
@@ -484,7 +565,9 @@ export default function MapScreen() {
                 value={search}
                 onChangeText={(text) => {
                   setSearch(text);
-                  fetchSearchSuggestions(text);
+                  if (!text.trim()) {
+                    setSearchResults([]);
+                  }
                 }}
                 style={styles.searchInput}
                 returnKeyType="search"
@@ -670,7 +753,10 @@ export default function MapScreen() {
                   <View style={styles.addressRow}>
                     <TextInput
                         value={address}
-                        onChangeText={setAddress}
+                        onChangeText={(text) => {
+                          setAddressTouched(true);
+                          setAddress(text);
+                        }}
                         style={[styles.input, { flex: 1, marginBottom: 0 }]}
                         placeholder="Adresse wird automatisch gesetzt"
                     />
