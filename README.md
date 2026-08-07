@@ -14,6 +14,10 @@ Das System besteht aus **3 Komponenten**:
 
 - **Admin-Web (Vercel):** https://infrastructure-reporting-system.vercel.app
 - **Backend API (Render):** https://cityreport-backend.onrender.com
+- **Datenbank (Neon):** PostgreSQL auf Neon (Cloud)
+
+> ℹ️ **Hinweis:** `localhost`-Adressen in diesem README gelten nur für **lokale Entwicklung**.
+> In Produktion läuft das Frontend auf **Vercel**, das Backend auf **Render** und die PostgreSQL-Datenbank auf **Neon**.
 
 ---
 
@@ -93,7 +97,11 @@ Server läuft auf Port 5000
 PostgreSQL connected ✅
 ```
 
-**Backend läuft auf:** `http://localhost:5000`
+**Backend lokal:** `http://localhost:5000`
+
+**Backend Produktion (Render):** `https://cityreport-backend.onrender.com`
+
+**Datenbank Produktion (Neon):** PostgreSQL (Cloud)
 
 ---
 
@@ -115,9 +123,17 @@ npm start
 http://localhost:3000
 ```
 
-**Login Credentials:**
+**Admin-Web Produktion (Vercel):** `https://infrastructure-reporting-system.vercel.app`
+
+**Login als Administrator:**
 ```
-Email: admin@cityreport.de (oder registriert)
+Email: admin@cityreport.de
+Passwort: 123456
+```
+
+**Login als Sachbearbeiter (Caseworker):**
+```
+Email: ekrayym@gmail.com
 Passwort: 123456
 ```
 
