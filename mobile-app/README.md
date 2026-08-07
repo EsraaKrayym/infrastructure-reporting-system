@@ -1,63 +1,72 @@
-# Welcome to your Expo app 👋
+# Mobile App (Expo)
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+React Native App für Bürgermeldungen im Projekt **Infrastructure Reporting System**.
 
-## Get started
+## Voraussetzungen
 
-1. Install dependencies
+- Node.js 18+
+- npm
+- Expo Go App (optional auf echtem Gerät)
 
-   ```bash
-   npm install
-   ```
-
-```bash
-npx expo install expo-location
-npx expo install react-native-maps
-npx expo install expo-image-picker
-npx expo install @react-native-async-storage/async-storage
- ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Installation
 
 ```bash
-npm run reset-project
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## App starten (lokal)
 
-### Other setup steps
+```bash
+npm run start
+```
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+Danach im Expo-Terminal:
 
-## Learn more
+- `a` = Android Emulator / Gerät
+- `i` = iOS Simulator (nur macOS)
+- `w` = Web
 
-To learn more about developing your project with Expo, look at the following resources:
+## Verfügbare Skripte
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+- `npm run start` – Expo Dev Server
+- `npm run android` – Start mit Android
+- `npm run ios` – Start mit iOS
+- `npm run web` – Start im Browser
+- `npm run lint` – Linting
+- `npm run reset-project` – Projekt-Reset-Skript
 
-## Join the community
+## API-Konfiguration
 
-Join our community of developers creating universal apps.
+Die App nutzt standardmäßig das produktive Backend auf Render:
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- `https://cityreport-backend.onrender.com/api`
+
+Optional kannst du lokal eine `.env` Datei im Ordner `mobile-app/` anlegen:
+
+```env
+EXPO_PUBLIC_API_URL=https://cityreport-backend.onrender.com/api
+```
+
+Für lokales Backend stattdessen z. B.:
+
+```env
+EXPO_PUBLIC_API_URL=http://<deine-lokale-ip>:5000/api
+```
+
+## Test-Login
+
+- **Sachbearbeiter (Caseworker)**
+  - Email: `ekrayym@gmail.com`
+  - Passwort: `123456`
+
+## Produktion
+
+- Frontend (Admin-Web): Vercel
+- Backend API: Render
+- Datenbank: Neon (PostgreSQL)
+
+## Hinweis
+
+Wenn sich Expo-Versionen ändern, nutze die passende versionierte Doku:
+
+- https://docs.expo.dev/versions/v56.0.0/
