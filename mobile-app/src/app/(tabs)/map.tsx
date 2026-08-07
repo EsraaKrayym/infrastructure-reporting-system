@@ -297,6 +297,22 @@ export default function MapScreen() {
     }
   };
 
+  const openGallery = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) return;
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false,
+      quality: 0.5,
+    });
+
+    if (!result.canceled) {
+      const uri = result.assets?.[0]?.uri;
+      if (uri) setPhoto(uri);
+    }
+  };
+
   const fetchSearchSuggestions = async (query: string) => {
     const trimmed = query.trim();
     if (!trimmed) {
@@ -691,10 +707,17 @@ export default function MapScreen() {
                       placeholder="Weitere Informationen..."
                   />
 
-                  <TouchableOpacity style={styles.cameraBtn} onPress={openCamera}>
-                    <MaterialIcons name="camera-alt" size={20} color="white" />
-                    <Text style={{ color: "white", marginLeft: 8 }}>Foto aufnehmen</Text>
-                  </TouchableOpacity>
+                  <View style={styles.mediaButtonsRow}>
+                    <TouchableOpacity style={[styles.cameraBtn, styles.mediaBtn]} onPress={openCamera}>
+                      <MaterialIcons name="camera-alt" size={20} color="white" />
+                      <Text style={styles.mediaBtnText}>Foto aufnehmen</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={[styles.cameraBtn, styles.mediaBtn]} onPress={openGallery}>
+                      <MaterialIcons name="photo-library" size={20} color="white" />
+                      <Text style={styles.mediaBtnText}>Aus Galerie</Text>
+                    </TouchableOpacity>
+                  </View>
 
                   {photo && (
                       <View style={styles.photoPreviewCard}>
@@ -1039,6 +1062,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginTop: 10,
+  },
+  mediaButtonsRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 10,
+  },
+  mediaBtn: {
+    flex: 1,
+    marginTop: 0,
+  },
+  mediaBtnText: {
+    color: "white",
+    marginLeft: 8,
+    fontWeight: "600",
   },
 
   photoPreviewCard: {
