@@ -137,6 +137,12 @@ Email: ekrayym@gmail.com
 Passwort: 123456
 ```
 
+**Mobile-App Test-Login:**
+```
+Email: saso.faeros@gmail.com
+Passwort: 123456
+```
+
 ---
 
 ### 3️⃣ Mobile-App starten

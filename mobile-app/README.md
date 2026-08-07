@@ -59,6 +59,10 @@ EXPO_PUBLIC_API_URL=http://<deine-lokale-ip>:5000/api
   - Email: `ekrayym@gmail.com`
   - Passwort: `123456`
 
+- **Mobile-App Test-Login**
+  - Email: `saso.faeros@gmail.com`
+  - Passwort: `123456`
+
 ## Produktion
 
 - Frontend (Admin-Web): Vercel

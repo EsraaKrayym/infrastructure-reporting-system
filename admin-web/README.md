@@ -53,6 +53,10 @@ Hinweis: Für lokale Entwicklung kann dort alternativ `http://localhost:5000/api
 	- Email: `ekrayym@gmail.com`
 	- Passwort: `123456`
 
+- **Mobile-App Test-Login**
+	- Email: `saso.faeros@gmail.com`
+	- Passwort: `123456`
+
 ## Produktion
 
 - Admin-Web: Vercel
